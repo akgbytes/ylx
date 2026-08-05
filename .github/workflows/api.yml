@@ -1,0 +1,118 @@
+name: API CI/CD
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/api.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/api.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: apps/api
+
+jobs:
+  ci:
+    name: Check, test, and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+
+      - name: Run vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build API
+        run: go build -o /tmp/ylx-api ./cmd/api
+
+  # deploy:
+  #   name: Deploy to EC2
+  #   needs: ci
+  #   if: >-
+  #     vars.EC2_DEPLOY_ENABLED == 'true' &&
+  #     (github.event_name == 'workflow_dispatch' ||
+  #     (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   env:
+  #     EC2_HOST: ${{ secrets.EC2_HOST }}
+  #     EC2_USER: ${{ secrets.EC2_USER }}
+  #     EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+  #     EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+  #     GOARCH: ${{ vars.EC2_ARCH || 'amd64' }}
+  #   steps:
+  #     - name: Check out the repository
+  #       uses: actions/checkout@v6
+
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v6
+  #       with:
+  #         go-version-file: apps/api/go.mod
+  #         cache-dependency-path: apps/api/go.sum
+
+  #     - name: Build the Linux binary
+  #       run: |
+  #         mkdir -p dist
+  #         CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o dist/ylx-api ./cmd/api
+
+  #     - name: Configure SSH
+  #       working-directory: .
+  #       run: |
+  #         install -m 700 -d "$HOME/.ssh"
+  #         printf '%s\n' "$EC2_SSH_KEY" > "$HOME/.ssh/id_ed25519"
+  #         chmod 600 "$HOME/.ssh/id_ed25519"
+  #         printf '%s\n' "$EC2_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+  #         chmod 600 "$HOME/.ssh/known_hosts"
+
+  #     - name: Upload release files
+  #       working-directory: .
+  #       run: |
+  #         scp apps/api/dist/ylx-api "$EC2_USER@$EC2_HOST:/tmp/ylx-api"
+  #         scp apps/api/deploy/ylx-api.service "$EC2_USER@$EC2_HOST:/tmp/ylx-api.service"
+
+  #     - name: Install and restart the service
+  #       working-directory: .
+  #       run: |
+  #         ssh "$EC2_USER@$EC2_HOST" '
+  #           set -eu
+  #           sudo install -o root -g root -m 0755 /tmp/ylx-api /opt/ylx/bin/ylx-api
+  #           sudo install -o root -g root -m 0644 /tmp/ylx-api.service /etc/systemd/system/ylx-api.service
+  #           sudo systemctl daemon-reload
+  #           sudo systemctl enable --now ylx-api
+  #           sudo systemctl restart ylx-api
+  #           sudo systemctl is-active --quiet ylx-api
+  #         '
+
+  #     - name: Verify the health endpoint
+  #       working-directory: .
+  #       run: ssh "$EC2_USER@$EC2_HOST" "curl --fail --silent --show-error http://127.0.0.1:8080/healthz"
