@@ -59,8 +59,8 @@ jobs:
       - name: Build API
         run: go build -o /tmp/ylx-api ./cmd/api
 
-  oidc_check:
-    name: Verify AWS OIDC
+  deploy:
+    name: Build and upload release
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -70,6 +70,27 @@ jobs:
       contents: read
 
     steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+
+      - name: Build Linux release
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -trimpath -ldflags="-s -w" \
+            -o dist/ylx-api ./cmd/api
+
+      - name: Create release checksum
+        run: |
+          cd dist
+          sha256sum ylx-api > ylx-api.sha256
+
       - name: Configure temporary AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -78,6 +99,9 @@ jobs:
           role-session-name: ylx-${{ github.run_id }}
           mask-aws-account-id: true
 
-      - name: Show assumed AWS identity
-        working-directory: .
-        run: aws sts get-caller-identity
+      - name: Upload release to S3
+        run: |
+          aws s3 cp dist/ \
+            "s3://ylx-deployments-ap-south-1/releases/${GITHUB_SHA}/" \
+            --recursive \
+            --sse AES256
