@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ylx-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ylx
+      POSTGRES_PASSWORD: ylx
+      POSTGRES_DB: ylx
+    ports:
+      - "5432:5432"
+    volumes:
+      - ylx_dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ylx -d ylx"]
+      interval: 1m
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: ylx-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ylx_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1m
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  ylx_dbdata:
+  ylx_redisdata:
