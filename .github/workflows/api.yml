@@ -105,3 +105,61 @@ jobs:
             "s3://ylx-deployments-ap-south-1/releases/${GITHUB_SHA}/" \
             --recursive \
             --sse AES256
+
+      - name: Deploy release through SSM
+        env:
+          INSTANCE_ID: i-0cb83dca50a8754d0
+        run: |
+          PARAMETERS=$(jq -nc --arg sha "$GITHUB_SHA" '{
+            commands: [
+              "set -euo pipefail",
+              ("release_dir=/tmp/ylx-" + $sha),
+              "install -d -m 0755 \"$release_dir\"",
+              ("aws s3 cp \"s3://ylx-deployments-ap-south-1/releases/" + $sha + "/ylx-api\" \"$release_dir/ylx-api\""),
+              ("aws s3 cp \"s3://ylx-deployments-ap-south-1/releases/" + $sha + "/ylx-api.sha256\" \"$release_dir/ylx-api.sha256\""),
+              "cd \"$release_dir\"",
+              "sha256sum -c ylx-api.sha256",
+              "cp -a /opt/ylx/bin/ylx-api /opt/ylx/bin/ylx-api.previous",
+              "install -o root -g root -m 0755 ylx-api /opt/ylx/bin/ylx-api.new",
+              "mv -f /opt/ylx/bin/ylx-api.new /opt/ylx/bin/ylx-api",
+              "if systemctl restart ylx-api && systemctl is-active --quiet ylx-api && curl --retry 5 --retry-delay 1 --retry-connrefused --fail --silent --show-error http://127.0.0.1:8080/healthz; then rm -f \"$release_dir/ylx-api\" \"$release_dir/ylx-api.sha256\"; rmdir \"$release_dir\"; else mv -f /opt/ylx/bin/ylx-api.previous /opt/ylx/bin/ylx-api; systemctl restart ylx-api; exit 1; fi"
+            ]
+          }')
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "Deploy YLX API ${GITHUB_SHA}" \
+            --parameters "$PARAMETERS" \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM command ID: $COMMAND_ID"
+          sleep 2
+
+          if ! aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID"; then
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}' \
+              --output json
+            exit 1
+          fi
+
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}' \
+            --output json
+
+      - name: Verify public health endpoint
+        working-directory: .
+        run: |
+          curl --retry 5 \
+            --retry-delay 2 \
+            --fail \
+            --silent \
+            --show-error \
+            https://ylx-api.akgbytes.in/healthz
