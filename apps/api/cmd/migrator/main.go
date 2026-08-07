@@ -24,7 +24,7 @@ func main() {
 	cfg := config.MustLoad()
 
 	if len(os.Args) < minimumCommandArgs {
-		color.Yellow("Usage: migrator <up|down|version|goto|force>")
+		color.Yellow("usage: migrator <up|down|version|goto|force>")
 		return
 	}
 
@@ -33,17 +33,17 @@ func main() {
 		cfg.DatabaseURL,
 	)
 	if err != nil {
-		color.Red("✘ Init migrator failed: %v", err)
+		color.Red("✘ init migrator failed: %v", err)
 		return
 	}
 
 	defer func() {
 		sourceErr, dbErr := m.Close()
 		if sourceErr != nil {
-			color.Red("✘ Migrator close source error: %v", sourceErr)
+			color.Red("✘ migrator close source error: %v", sourceErr)
 		}
 		if dbErr != nil {
-			color.Red("✘ Migrator close db error: %v", dbErr)
+			color.Red("✘ migrator close db error: %v", dbErr)
 		}
 	}()
 
@@ -63,7 +63,7 @@ func runCommand(m *migrate.Migrate, args []string) {
 	case "force":
 		runForce(m, args)
 	default:
-		color.Yellow("Usage: migrator <up|down|version|goto|force>")
+		color.Yellow("usage: migrator <up|down|version|goto|force>")
 	}
 }
 
@@ -72,53 +72,53 @@ func runUp(m *migrate.Migrate) {
 
 	switch {
 	case err == nil:
-		color.Green("✔ Migrations applied successfully")
+		color.Green("✔ migrations applied successfully")
 	case errors.Is(err, migrate.ErrNoChange):
-		color.Green("✔ All migrations already applied")
+		color.Green("✔ all migrations already applied")
 	default:
-		color.Red("✘ Migration failed: %v", err)
+		color.Red("✘ migration failed: %v", err)
 	}
 }
 
 func runDown(m *migrate.Migrate, args []string) {
 	if len(args) < minimumDownCommandArgs {
-		color.Yellow("Usage: migrator down <steps|all>")
+		color.Yellow("usage: migrator down <steps|all>")
 		return
 	}
 
 	target := args[2]
 	if target == "all" {
 		if err := m.Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-			color.Red("✘ Rollback failed: %v", err)
+			color.Red("✘ rollback failed: %v", err)
 			return
 		}
 
-		color.Green("✔ All migrations rolled back")
+		color.Green("✔ all migrations rolled back")
 		return
 	}
 
 	steps, err := strconv.Atoi(target)
 	if err != nil || steps <= 0 {
-		color.Red("✘ Invalid rollback steps")
+		color.Red("✘ invalid rollback steps")
 		return
 	}
 
 	if err := m.Steps(-steps); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		color.Red("✘ Rollback failed: %v", err)
+		color.Red("✘ rollback failed: %v", err)
 		return
 	}
 
-	color.Green("✔ Rolled back %d migration(s)", steps)
+	color.Green("✔ rolled back %d migration(s)", steps)
 }
 
 func runVersion(m *migrate.Migrate) {
 	version, dirty, err := m.Version()
 	if err != nil {
-		color.Red("✘ Failed to get migration version: %v", err)
+		color.Red("✘ failed to get migration version: %v", err)
 		return
 	}
 
-	color.Cyan("ℹ Current version: %d (dirty: %t)", version, dirty)
+	color.Cyan("ℹ current version: %d (dirty: %t)", version, dirty)
 }
 
 func runGoto(m *migrate.Migrate, args []string) {
@@ -126,19 +126,19 @@ func runGoto(m *migrate.Migrate, args []string) {
 	version := gotoCmd.Uint("version", 0, "target migration version")
 
 	if err := gotoCmd.Parse(args[2:]); err != nil {
-		color.Red("✘ Invalid goto arguments: %v", err)
+		color.Red("✘ invalid goto arguments: %v", err)
 		return
 	}
 	if *version == 0 {
-		color.Yellow("Usage: migrator goto --version <version>")
+		color.Yellow("usage: migrator goto --version <version>")
 		return
 	}
 	if err := m.Migrate(*version); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		color.Red("✘ Migration failed: %v", err)
+		color.Red("✘ migration failed: %v", err)
 		return
 	}
 
-	color.Green("✔ Migrated to version %d", *version)
+	color.Green("✔ migrated to version %d", *version)
 }
 
 func runForce(m *migrate.Migrate, args []string) {
@@ -146,17 +146,17 @@ func runForce(m *migrate.Migrate, args []string) {
 	version := forceCmd.Uint("version", 0, "force migration version")
 
 	if err := forceCmd.Parse(args[2:]); err != nil {
-		color.Red("✘ Invalid force arguments: %v", err)
+		color.Red("✘ invalid force arguments: %v", err)
 		return
 	}
 	if *version == 0 {
-		color.Yellow("Usage: migrator force --version <version>")
+		color.Yellow("usage: migrator force --version <version>")
 		return
 	}
 	if err := m.Force(int(*version)); err != nil {
-		color.Red("✘ Force failed: %v", err)
+		color.Red("✘ force failed: %v", err)
 		return
 	}
 
-	color.Green("✔ Forced migration version to %d", *version)
+	color.Green("✔ forced migration version to %d", *version)
 }

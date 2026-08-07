@@ -21,7 +21,13 @@ clean:
 	@rm -rf ./bin
 
 migrate:
-	@go run ./cmd/migrator/main.go up
+	@go run ./cmd/migrator up
 
 rollback:
-	@go run ./cmd/migrator/main.go down 1
+	@go run ./cmd/migrator down 1
+
+seed:
+	@go run ./cmd/seeder
+
+seed-listings:
+	@go run ./cmd/seeder --file=001_listings.sql
