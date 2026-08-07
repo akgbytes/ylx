@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -14,17 +15,26 @@ import (
 const dbStartupTimeout = 30 * time.Second
 
 func main() {
+	if err := initServer(); err != nil {
+		log.Fatal(err)
+	}
+}
 
+func initServer() error {
 	cfg := config.MustLoad()
 
 	dbCtx, dbCancel := context.WithTimeout(context.Background(), dbStartupTimeout)
 	db, err := database.Connect(dbCtx, *cfg)
 	dbCancel()
 	if err != nil {
-		log.Fatal("init database failed: ", err)
+		return fmt.Errorf("init database: %w", err)
 	}
 
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("close db: %v", err)
+		}
+	}()
 	log.Println("database connected")
 	router := router.New()
 
@@ -38,7 +48,5 @@ func main() {
 
 	log.Println("starting ylx api server on port", server.Addr)
 
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err)
-	}
+	return server.ListenAndServe()
 }

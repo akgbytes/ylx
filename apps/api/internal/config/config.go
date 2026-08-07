@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+
 	_ "github.com/joho/godotenv/autoload"
 )
 

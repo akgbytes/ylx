@@ -12,7 +12,7 @@ other, communicate directly, and arrange payment and delivery themselves.
 ### Requirements
 
 - Go 1.26.5+
-- Node.js 18+
+- Node.js 22.12.0+
 - pnpm 9
 
 ### Run the API

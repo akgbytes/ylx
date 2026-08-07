@@ -1,0 +1,12 @@
+{
+  "name": "@ylx/api",
+  "private": true,
+  "scripts": {
+    "clean": "make clean",
+    "dev": "make run",
+    "format": "make format",
+    "format:check": "make format-check",
+    "lint": "make lint",
+    "typecheck": "go vet ./..."
+  }
+}

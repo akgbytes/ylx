@@ -1,4 +1,4 @@
-.PHONY: build run format clean migrate rollback
+.PHONY: build run format format-check lint clean migrate rollback
 
 build:
 	@go build -o bin/api ./cmd/api
@@ -7,8 +7,15 @@ run:
 	@go run ./cmd/api
 
 format:
-	@go fmt ./...
 	@go mod tidy
+	@golangci-lint fmt
+
+format-check:
+	@golangci-lint fmt --diff
+	@go mod tidy -diff
+
+lint:
+	@golangci-lint run
 
 clean:
 	@rm -rf ./bin

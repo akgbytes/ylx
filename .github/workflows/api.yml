@@ -30,13 +30,14 @@ jobs:
   ci:
     name: Check, test, and build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: apps/api/go.mod
           cache-dependency-path: apps/api/go.sum
@@ -47,23 +48,42 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
+      - name: Check module files
+        run: go mod tidy -diff
+
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: apps/api
+          install-only: true
+
       - name: Check formatting
-        run: test -z "$(gofmt -l .)"
+        run: golangci-lint fmt --diff
 
-      - name: Run vet
-        run: go vet ./...
+      - name: Run linters
+        run: golangci-lint run ./...
 
-      - name: Run tests
-        run: go test ./...
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
 
-      - name: Build API
-        run: go build -o /tmp/ylx-api ./cmd/api
+      - name: Run vulnerability check
+        run: govulncheck ./...
+
+      - name: Run tests with race detector and coverage
+        run: |
+          go test -race -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out
+
+      - name: Build all packages
+        run: go build ./...
 
   deploy:
-    name: Build and upload release
+    name: Deploy API to production
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     permissions:
       id-token: write
@@ -71,10 +91,10 @@ jobs:
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: apps/api/go.mod
           cache-dependency-path: apps/api/go.sum
