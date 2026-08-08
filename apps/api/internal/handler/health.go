@@ -7,10 +7,6 @@ import (
 
 type HealthHandler struct{}
 
-type HealthResponse struct {
-	Status string `json:"status"`
-}
-
 func NewHealthHandler() *HealthHandler {
 	return &HealthHandler{}
 }

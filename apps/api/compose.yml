@@ -1,3 +1,5 @@
+name: ylx
+
 services:
   postgres:
     image: postgres:17-alpine
