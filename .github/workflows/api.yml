@@ -142,7 +142,7 @@ jobs:
               "cp -a /opt/ylx/bin/ylx-api /opt/ylx/bin/ylx-api.previous",
               "install -o root -g root -m 0755 ylx-api /opt/ylx/bin/ylx-api.new",
               "mv -f /opt/ylx/bin/ylx-api.new /opt/ylx/bin/ylx-api",
-              "if systemctl restart ylx-api && systemctl is-active --quiet ylx-api && curl --retry 5 --retry-delay 1 --retry-connrefused --fail --silent --show-error http://127.0.0.1:8080/healthz; then rm -f \"$release_dir/ylx-api\" \"$release_dir/ylx-api.sha256\"; rmdir \"$release_dir\"; else mv -f /opt/ylx/bin/ylx-api.previous /opt/ylx/bin/ylx-api; systemctl restart ylx-api; exit 1; fi"
+              "if systemctl restart ylx-api && timeout 35 bash -c \"until curl --fail --silent --show-error --retry-connrefused http://127.0.0.1:8080/healthz; do sleep 1; done\"; then rm -f \"$release_dir/ylx-api\" \"$release_dir/ylx-api.sha256\"; rmdir \"$release_dir\"; else journalctl -u ylx-api -n 50 --no-pager || true; mv -f /opt/ylx/bin/ylx-api.previous /opt/ylx/bin/ylx-api; systemctl restart ylx-api; exit 1; fi"
             ]
           }')
 
