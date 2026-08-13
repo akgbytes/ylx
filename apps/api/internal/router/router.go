@@ -8,12 +8,12 @@ import (
 	"github.com/akgbytes/ylx/internal/handler"
 )
 
-func New(db *sql.DB, logger *slog.Logger) http.Handler {
+func NewRouter(db *sql.DB, logger *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
-	handlers := handler.New(db, logger)
+	handlers := handler.NewHandlers(db, logger)
 
 	registerHealthRoutes(mux, handlers.Health)
-	registerListingRoutes(mux, handlers.Listing)
+	registerListingsRoutes(mux, handlers.Listings)
 
 	return mux
 }

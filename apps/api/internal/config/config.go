@@ -25,7 +25,7 @@ type Config struct {
 }
 
 func MustLoad() *Config {
-	validate := validator.New()
+	validator := validator.New()
 
 	cfg := &Config{
 		Addr:                    os.Getenv("ADDR"),
@@ -40,8 +40,8 @@ func MustLoad() *Config {
 		DatabaseConnMaxLifetime: mustParseDuration("DATABASE_CONN_MAX_LIFETIME"),
 	}
 
-	if err := validate.Struct(cfg); err != nil {
-		log.Fatal("validation failed: ", err)
+	if err := validator.Struct(cfg); err != nil {
+		log.Fatal("invalid configuration: ", err)
 	}
 
 	return cfg
@@ -50,26 +50,26 @@ func MustLoad() *Config {
 func mustParseDuration(key string) time.Duration {
 	value := os.Getenv(key)
 	if value == "" {
-		log.Fatalf("validation failed: %s is required", key)
+		log.Fatalf("invalid configuration: %s is required", key)
 	}
 
-	d, err := time.ParseDuration(value)
+	duration, err := time.ParseDuration(value)
 	if err != nil {
-		log.Fatalf("validation failed: invalid %s: %v", key, err)
+		log.Fatalf("invalid configuration: %s: %v", key, err)
 	}
 
-	return d
+	return duration
 }
 
 func mustParseInt(key string) int {
 	value := os.Getenv(key)
 	if value == "" {
-		log.Fatalf("validation failed: %s is required", key)
+		log.Fatalf("invalid configuration: %s is required", key)
 	}
 
-	v, err := strconv.Atoi(value)
+	integer, err := strconv.Atoi(value)
 	if err != nil {
-		log.Fatalf("validation failed: invalid %s: %v", key, err)
+		log.Fatalf("invalid configuration: %s: %v", key, err)
 	}
-	return v
+	return integer
 }

@@ -21,7 +21,7 @@ func NewListingsHandler(db *sql.DB, logger *slog.Logger) *ListingsHandler {
 	}
 }
 
-func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
+func (handler *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := `
 		SELECT id, title, description, price, city, created_at, updated_at
@@ -29,15 +29,15 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 		ORDER BY title DESC;
 	`
 
-	rows, err := h.db.QueryContext(ctx, query)
+	rows, err := handler.db.QueryContext(ctx, query)
 	if err != nil {
-		h.logger.ErrorContext(ctx, "failed to query listings", "error", err)
+		handler.logger.Error("query listings", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			h.logger.ErrorContext(ctx, "failed to close listing rows", "error", err)
+			handler.logger.Error("close listing rows", "error", err)
 		}
 	}()
 
@@ -52,10 +52,10 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 			&listing.Description,
 			&listing.Price,
 			&listing.City,
-			&listing.Created_At,
-			&listing.Updated_At,
+			&listing.CreatedAt,
+			&listing.UpdatedAt,
 		); err != nil {
-			h.logger.ErrorContext(ctx, "failed to scan listing", "error", err)
+			handler.logger.Error("scan listing", "error", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -63,7 +63,7 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := rows.Err(); err != nil {
-		h.logger.ErrorContext(ctx, "failed while iterating listings", "error", err)
+		handler.logger.Error("iterate listing rows", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -71,25 +71,27 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	_ = json.NewEncoder(w).Encode(ListingsResponse{
+	if err := json.NewEncoder(w).Encode(ListListingsResponse{
 		Listings: listings,
-	})
+	}); err != nil {
+		handler.logger.Error("write listings response", "error", err)
+	}
 }
 
-func (h *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
+func (handler *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := r.PathValue("id")
+	listingID := r.PathValue("id")
 
 	query := `
 		DELETE FROM listings
 		WHERE id = $1;
 	`
 
-	result, err := h.db.ExecContext(ctx, query, id)
+	result, err := handler.db.ExecContext(ctx, query, listingID)
 	if err != nil {
-		h.logger.ErrorContext(ctx,
-			"failed to delete listing",
-			"listing_id", id,
+		handler.logger.Error(
+			"delete listing",
+			"listing_id", listingID,
 			"error", err,
 		)
 
@@ -99,9 +101,9 @@ func (h *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		h.logger.ErrorContext(ctx,
-			"failed to get deleted listing count",
-			"listing_id", id,
+		handler.logger.Error(
+			"get deleted listing count",
+			"listing_id", listingID,
 			"error", err,
 		)
 
@@ -113,7 +115,7 @@ func (h *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 
-		_ = json.NewEncoder(w).Encode(ListingsErrorResponse{
+		_ = json.NewEncoder(w).Encode(ListingNotFoundResponse{
 			Message: "listing not found",
 		})
 

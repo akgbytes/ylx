@@ -8,6 +8,6 @@ type Listing struct {
 	Description string    `json:"description"`
 	Price       int64     `json:"price"`
 	City        string    `json:"city"`
-	Created_At  time.Time `json:"created_at"`
-	Updated_At  time.Time `json:"updated_at"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

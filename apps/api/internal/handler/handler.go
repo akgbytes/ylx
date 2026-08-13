@@ -6,13 +6,13 @@ import (
 )
 
 type Handlers struct {
-	Health  *HealthHandler
-	Listing *ListingsHandler
+	Health   *HealthHandler
+	Listings *ListingsHandler
 }
 
-func New(db *sql.DB, logger *slog.Logger) *Handlers {
+func NewHandlers(db *sql.DB, logger *slog.Logger) *Handlers {
 	return &Handlers{
-		Health:  NewHealthHandler(),
-		Listing: NewListingsHandler(db, logger),
+		Health:   NewHealthHandler(),
+		Listings: NewListingsHandler(db, logger),
 	}
 }

@@ -28,47 +28,47 @@ func main() {
 		return
 	}
 
-	m, err := migrate.New(
+	migrator, err := migrate.New(
 		"file://migrations",
 		cfg.DatabaseURL,
 	)
 	if err != nil {
-		color.Red("✘ init migrator failed: %v", err)
+		color.Red("✘ failed to initialize migrator: %v", err)
 		return
 	}
 
 	defer func() {
-		sourceErr, dbErr := m.Close()
+		sourceErr, databaseErr := migrator.Close()
 		if sourceErr != nil {
-			color.Red("✘ migrator close source error: %v", sourceErr)
+			color.Red("✘ failed to close migration source: %v", sourceErr)
 		}
-		if dbErr != nil {
-			color.Red("✘ migrator close db error: %v", dbErr)
+		if databaseErr != nil {
+			color.Red("✘ failed to close migration database: %v", databaseErr)
 		}
 	}()
 
-	runCommand(m, os.Args)
+	dispatchCommand(migrator, os.Args)
 }
 
-func runCommand(m *migrate.Migrate, args []string) {
+func dispatchCommand(migrator *migrate.Migrate, args []string) {
 	switch args[1] {
 	case "up":
-		runUp(m)
+		applyMigrations(migrator)
 	case "down":
-		runDown(m, args)
+		rollbackMigrations(migrator, args)
 	case "version":
-		runVersion(m)
+		showVersion(migrator)
 	case "goto":
-		runGoto(m, args)
+		migrateToVersion(migrator, args)
 	case "force":
-		runForce(m, args)
+		forceVersion(migrator, args)
 	default:
 		color.Yellow("usage: migrator <up|down|version|goto|force>")
 	}
 }
 
-func runUp(m *migrate.Migrate) {
-	err := m.Up()
+func applyMigrations(migrator *migrate.Migrate) {
+	err := migrator.Up()
 
 	switch {
 	case err == nil:
@@ -80,15 +80,15 @@ func runUp(m *migrate.Migrate) {
 	}
 }
 
-func runDown(m *migrate.Migrate, args []string) {
+func rollbackMigrations(migrator *migrate.Migrate, args []string) {
 	if len(args) < minimumDownCommandArgs {
 		color.Yellow("usage: migrator down <steps|all>")
 		return
 	}
 
-	target := args[2]
-	if target == "all" {
-		if err := m.Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	stepsOrAll := args[2]
+	if stepsOrAll == "all" {
+		if err := migrator.Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 			color.Red("✘ rollback failed: %v", err)
 			return
 		}
@@ -97,13 +97,13 @@ func runDown(m *migrate.Migrate, args []string) {
 		return
 	}
 
-	steps, err := strconv.Atoi(target)
+	steps, err := strconv.Atoi(stepsOrAll)
 	if err != nil || steps <= 0 {
-		color.Red("✘ invalid rollback steps")
+		color.Red("✘ rollback steps must be a positive integer")
 		return
 	}
 
-	if err := m.Steps(-steps); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	if err := migrator.Steps(-steps); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		color.Red("✘ rollback failed: %v", err)
 		return
 	}
@@ -111,8 +111,8 @@ func runDown(m *migrate.Migrate, args []string) {
 	color.Green("✔ rolled back %d migration(s)", steps)
 }
 
-func runVersion(m *migrate.Migrate) {
-	version, dirty, err := m.Version()
+func showVersion(migrator *migrate.Migrate) {
+	version, dirty, err := migrator.Version()
 	if err != nil {
 		color.Red("✘ failed to get migration version: %v", err)
 		return
@@ -121,11 +121,11 @@ func runVersion(m *migrate.Migrate) {
 	color.Cyan("ℹ current version: %d (dirty: %t)", version, dirty)
 }
 
-func runGoto(m *migrate.Migrate, args []string) {
-	gotoCmd := flag.NewFlagSet("goto", flag.ContinueOnError)
-	version := gotoCmd.Uint("version", 0, "target migration version")
+func migrateToVersion(migrator *migrate.Migrate, args []string) {
+	gotoFlags := flag.NewFlagSet("goto", flag.ContinueOnError)
+	version := gotoFlags.Uint("version", 0, "target migration version")
 
-	if err := gotoCmd.Parse(args[2:]); err != nil {
+	if err := gotoFlags.Parse(args[2:]); err != nil {
 		color.Red("✘ invalid goto arguments: %v", err)
 		return
 	}
@@ -133,7 +133,7 @@ func runGoto(m *migrate.Migrate, args []string) {
 		color.Yellow("usage: migrator goto --version <version>")
 		return
 	}
-	if err := m.Migrate(*version); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	if err := migrator.Migrate(*version); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		color.Red("✘ migration failed: %v", err)
 		return
 	}
@@ -141,11 +141,11 @@ func runGoto(m *migrate.Migrate, args []string) {
 	color.Green("✔ migrated to version %d", *version)
 }
 
-func runForce(m *migrate.Migrate, args []string) {
-	forceCmd := flag.NewFlagSet("force", flag.ContinueOnError)
-	version := forceCmd.Uint("version", 0, "force migration version")
+func forceVersion(migrator *migrate.Migrate, args []string) {
+	forceFlags := flag.NewFlagSet("force", flag.ContinueOnError)
+	version := forceFlags.Uint("version", 0, "force migration version")
 
-	if err := forceCmd.Parse(args[2:]); err != nil {
+	if err := forceFlags.Parse(args[2:]); err != nil {
 		color.Red("✘ invalid force arguments: %v", err)
 		return
 	}
@@ -153,7 +153,7 @@ func runForce(m *migrate.Migrate, args []string) {
 		color.Yellow("usage: migrator force --version <version>")
 		return
 	}
-	if err := m.Force(int(*version)); err != nil {
+	if err := migrator.Force(int(*version)); err != nil {
 		color.Red("✘ force failed: %v", err)
 		return
 	}

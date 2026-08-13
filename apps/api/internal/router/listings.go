@@ -6,7 +6,7 @@ import (
 	"github.com/akgbytes/ylx/internal/handler"
 )
 
-func registerListingRoutes(mux *http.ServeMux, h *handler.ListingsHandler) {
-	mux.HandleFunc("GET /listings", h.List)
-	mux.HandleFunc("DELETE /listings/{id}", h.Delete)
+func registerListingsRoutes(mux *http.ServeMux, listingsHandler *handler.ListingsHandler) {
+	mux.HandleFunc("GET /listings", listingsHandler.List)
+	mux.HandleFunc("DELETE /listings/{id}", listingsHandler.Delete)
 }

@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	defaultSeedDir = "seeds"
-	defaultTimeout = 30 * time.Second
+	defaultSeedDir         = "seeds"
+	seedTransactionTimeout = 30 * time.Second
 )
 
 func main() {
@@ -30,8 +30,8 @@ func main() {
 }
 
 func run() error {
-	dir := flag.String("dir", defaultSeedDir, "directory containing seed files")
-	file := flag.String("file", "", "seed file to execute")
+	seedDir := flag.String("dir", defaultSeedDir, "directory containing seed files")
+	seedFile := flag.String("file", "", "seed file to execute")
 	flag.Parse()
 
 	cfg := config.MustLoad()
@@ -46,7 +46,7 @@ func run() error {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), seedTransactionTimeout)
 	defer cancel()
 
 	tx, err := db.BeginTx(ctx, nil)
@@ -59,7 +59,7 @@ func run() error {
 		_ = tx.Rollback()
 	}()
 
-	if err := runSeed(ctx, tx, *dir, *file); err != nil {
+	if err := executeSeeds(ctx, tx, *seedDir, *seedFile); err != nil {
 		return err
 	}
 
@@ -67,33 +67,33 @@ func run() error {
 		return fmt.Errorf("commit transaction: %w", err)
 	}
 
-	color.Green("✔ seeding completed successfully")
+	color.Green("✔ database seeded")
 
 	return nil
 }
 
-func runSeed(ctx context.Context, tx *sql.Tx, dir, file string) error {
-	if file == "" {
-		return runDirectory(ctx, tx, dir)
+func executeSeeds(ctx context.Context, tx *sql.Tx, seedDir, seedFile string) error {
+	if seedFile == "" {
+		return executeSeedDirectory(ctx, tx, seedDir)
 	}
 
-	if filepath.Ext(file) != ".sql" {
+	if filepath.Ext(seedFile) != ".sql" {
 		return errors.New("seed file must have a .sql extension")
 	}
 
-	path := file
+	path := seedFile
 
 	// Resolve relative paths against the configured seed directory.
 	// Absolute paths are used as-is.
 	if !filepath.IsAbs(path) {
-		path = filepath.Join(dir, path)
+		path = filepath.Join(seedDir, path)
 	}
 
-	return runFile(ctx, tx, path)
+	return executeSeedFile(ctx, tx, path)
 }
 
-func runDirectory(ctx context.Context, tx *sql.Tx, dir string) error {
-	entries, err := os.ReadDir(dir)
+func executeSeedDirectory(ctx context.Context, tx *sql.Tx, seedDir string) error {
+	entries, err := os.ReadDir(seedDir)
 	if err != nil {
 		return fmt.Errorf("read seed directory: %w", err)
 	}
@@ -105,20 +105,20 @@ func runDirectory(ctx context.Context, tx *sql.Tx, dir string) error {
 			continue
 		}
 
-		files = append(files, filepath.Join(dir, entry.Name()))
+		files = append(files, filepath.Join(seedDir, entry.Name()))
 	}
 
 	if len(files) == 0 {
-		return fmt.Errorf("no .sql seed files found in %q", dir)
+		return fmt.Errorf("no .sql seed files found in %q", seedDir)
 	}
 
 	// Execute in alphabetical order (001_, 002_, 003_, ...)
 	sort.Strings(files)
 
-	for _, file := range files {
-		color.Cyan("→ seeding %s", filepath.Base(file))
+	for _, seedFile := range files {
+		color.Cyan("→ applying seed %s", filepath.Base(seedFile))
 
-		if err := runFile(ctx, tx, file); err != nil {
+		if err := executeSeedFile(ctx, tx, seedFile); err != nil {
 			return err
 		}
 	}
@@ -126,14 +126,14 @@ func runDirectory(ctx context.Context, tx *sql.Tx, dir string) error {
 	return nil
 }
 
-func runFile(ctx context.Context, tx *sql.Tx, path string) error {
+func executeSeedFile(ctx context.Context, tx *sql.Tx, path string) error {
 	// #nosec G304 -- file path is intentionally provided via CLI flag
-	query, err := os.ReadFile(filepath.Clean(path))
+	script, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return fmt.Errorf("read %q: %w", path, err)
 	}
 
-	if _, err := tx.ExecContext(ctx, string(query)); err != nil {
+	if _, err := tx.ExecContext(ctx, string(script)); err != nil {
 		return fmt.Errorf("%s: %w", filepath.Base(path), err)
 	}
 

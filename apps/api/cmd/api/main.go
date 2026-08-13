@@ -8,7 +8,7 @@ import (
 	"github.com/akgbytes/ylx/internal/config"
 )
 
-const dbStartupTimeout = 30 * time.Second
+const databaseConnectTimeout = 30 * time.Second
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
@@ -18,10 +18,10 @@ func main() {
 
 	cfg := config.MustLoad()
 
-	app := newApp(logger, cfg, dbStartupTimeout)
+	api := newAPIServer(logger, cfg, databaseConnectTimeout)
 
-	if err := app.Run(); err != nil {
-		logger.Error("failed to run application", "error", err)
+	if err := api.run(); err != nil {
+		logger.Error("server exited", "error", err)
 		os.Exit(1)
 	}
 }

@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -22,7 +23,12 @@ func Connect(ctx context.Context, cfg config.Config) (*sql.DB, error) {
 	db.SetConnMaxLifetime(cfg.DatabaseConnMaxLifetime)
 
 	if err := db.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("database ping: %w", err)
+		pingErr := fmt.Errorf("ping database: %w", err)
+		if closeErr := db.Close(); closeErr != nil {
+			return nil, errors.Join(pingErr, fmt.Errorf("close database: %w", closeErr))
+		}
+
+		return nil, pingErr
 	}
 
 	return db, nil
