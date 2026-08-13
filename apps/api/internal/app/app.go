@@ -9,6 +9,7 @@ import (
 
 	"github.com/akgbytes/ylx/internal/config"
 	"github.com/akgbytes/ylx/internal/database"
+	"github.com/akgbytes/ylx/internal/middleware"
 	"github.com/akgbytes/ylx/internal/router"
 )
 
@@ -41,7 +42,9 @@ func (app *Application) Run() error {
 
 	app.logger.Info().Msg("database connected")
 
-	handler := router.NewRouter(db, app.logger)
+	handler := router.NewRouter(db)
+
+	handler = middleware.RequestID(app.logger)(handler)
 
 	httpServer := http.Server{
 		Addr:         app.config.Server.Addr,

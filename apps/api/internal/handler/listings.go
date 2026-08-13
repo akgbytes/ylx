@@ -11,34 +11,32 @@ import (
 )
 
 type ListingsHandler struct {
-	db     *sql.DB
-	logger zerolog.Logger
+	db *sql.DB
 }
 
-func NewListingsHandler(db *sql.DB, logger zerolog.Logger) *ListingsHandler {
+func NewListingsHandler(db *sql.DB) *ListingsHandler {
 	return &ListingsHandler{
-		db:     db,
-		logger: logger,
+		db: db,
 	}
 }
 
 func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	logger := zerolog.Ctx(r.Context())
 	query := `
 		SELECT id, title, description, price, city, created_at, updated_at
 		FROM listings
 		ORDER BY title DESC;
 	`
 
-	rows, err := h.db.QueryContext(ctx, query)
+	rows, err := h.db.QueryContext(r.Context(), query)
 	if err != nil {
-		h.logger.Err(err).Msg("query listings")
+		logger.Err(err).Msg("query listings")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			h.logger.Err(err).Msg("close listing rows")
+			logger.Err(err).Msg("close listing rows")
 		}
 	}()
 
@@ -56,7 +54,7 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 			&listing.CreatedAt,
 			&listing.UpdatedAt,
 		); err != nil {
-			h.logger.Err(err).Msg("scan listing")
+			logger.Err(err).Msg("scan listing")
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -64,7 +62,7 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := rows.Err(); err != nil {
-		h.logger.Err(err).Msg("iterate listing rows")
+		logger.Err(err).Msg("iterate listing rows")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -72,13 +70,15 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
+	logger.Info().Msg("listing fetched")
+
 	_ = json.NewEncoder(w).Encode(ListListingsResponse{
 		Listings: listings,
 	})
 }
 
 func (h *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	logger := zerolog.Ctx(r.Context())
 	listingID := r.PathValue("id")
 
 	query := `
@@ -86,16 +86,16 @@ func (h *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1;
 	`
 
-	result, err := h.db.ExecContext(ctx, query, listingID)
+	result, err := h.db.ExecContext(r.Context(), query, listingID)
 	if err != nil {
-		h.logger.Err(err).Str("listing_id", listingID).Msg("delete listing")
+		logger.Err(err).Str("listing_id", listingID).Msg("delete listing")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		h.logger.Err(err).Str("listing_id", listingID).Msg("get deleted listing count")
+		logger.Err(err).Str("listing_id", listingID).Msg("get deleted listing count")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -110,6 +110,8 @@ func (h *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
+	logger.Info().Str("listing_id", listingID).Msg("listing deleted")
 
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -2,8 +2,6 @@ package handler
 
 import (
 	"database/sql"
-
-	"github.com/rs/zerolog"
 )
 
 type Handlers struct {
@@ -11,9 +9,9 @@ type Handlers struct {
 	Listings *ListingsHandler
 }
 
-func NewHandlers(db *sql.DB, logger zerolog.Logger) *Handlers {
+func NewHandlers(db *sql.DB) *Handlers {
 	return &Handlers{
 		Health:   NewHealthHandler(),
-		Listings: NewListingsHandler(db, logger),
+		Listings: NewListingsHandler(db),
 	}
 }
