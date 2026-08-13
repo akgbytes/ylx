@@ -3,25 +3,26 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
-	"log/slog"
 	"net/http"
+
+	"github.com/rs/zerolog"
 
 	"github.com/akgbytes/ylx/internal/model"
 )
 
 type ListingsHandler struct {
 	db     *sql.DB
-	logger *slog.Logger
+	logger zerolog.Logger
 }
 
-func NewListingsHandler(db *sql.DB, logger *slog.Logger) *ListingsHandler {
+func NewListingsHandler(db *sql.DB, logger zerolog.Logger) *ListingsHandler {
 	return &ListingsHandler{
 		db:     db,
 		logger: logger,
 	}
 }
 
-func (handler *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
+func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := `
 		SELECT id, title, description, price, city, created_at, updated_at
@@ -29,15 +30,15 @@ func (handler *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 		ORDER BY title DESC;
 	`
 
-	rows, err := handler.db.QueryContext(ctx, query)
+	rows, err := h.db.QueryContext(ctx, query)
 	if err != nil {
-		handler.logger.Error("query listings", "error", err)
+		h.logger.Err(err).Msg("query listings")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			handler.logger.Error("close listing rows", "error", err)
+			h.logger.Err(err).Msg("close listing rows")
 		}
 	}()
 
@@ -55,7 +56,7 @@ func (handler *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 			&listing.CreatedAt,
 			&listing.UpdatedAt,
 		); err != nil {
-			handler.logger.Error("scan listing", "error", err)
+			h.logger.Err(err).Msg("scan listing")
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -63,7 +64,7 @@ func (handler *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := rows.Err(); err != nil {
-		handler.logger.Error("iterate listing rows", "error", err)
+		h.logger.Err(err).Msg("iterate listing rows")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -71,14 +72,12 @@ func (handler *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(ListListingsResponse{
+	_ = json.NewEncoder(w).Encode(ListListingsResponse{
 		Listings: listings,
-	}); err != nil {
-		handler.logger.Error("write listings response", "error", err)
-	}
+	})
 }
 
-func (handler *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
+func (h *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	listingID := r.PathValue("id")
 
@@ -87,26 +86,16 @@ func (handler *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1;
 	`
 
-	result, err := handler.db.ExecContext(ctx, query, listingID)
+	result, err := h.db.ExecContext(ctx, query, listingID)
 	if err != nil {
-		handler.logger.Error(
-			"delete listing",
-			"listing_id", listingID,
-			"error", err,
-		)
-
+		h.logger.Err(err).Str("listing_id", listingID).Msg("delete listing")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		handler.logger.Error(
-			"get deleted listing count",
-			"listing_id", listingID,
-			"error", err,
-		)
-
+		h.logger.Err(err).Str("listing_id", listingID).Msg("get deleted listing count")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

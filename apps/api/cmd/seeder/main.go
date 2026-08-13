@@ -11,131 +11,106 @@ import (
 	"sort"
 	"time"
 
-	"github.com/fatih/color"
+	"github.com/rs/zerolog"
 
-	"github.com/akgbytes/ylx/internal/config"
+	"github.com/akgbytes/ylx/internal/bootstrap"
 	"github.com/akgbytes/ylx/internal/database"
 )
 
-const (
-	defaultSeedDir         = "seeds"
-	seedTransactionTimeout = 30 * time.Second
-)
+const defaultTimeout = 30 * time.Second
 
 func main() {
-	if err := run(); err != nil {
-		color.Red("✘ %v", err)
-		os.Exit(1)
+	bootstraplogger := bootstrap.NewBootstrapLogger()
+	runtime, err := bootstrap.Load()
+	if err != nil {
+		bootstraplogger.Fatal().Err(err).Msg("bootstrap seeder")
 	}
-}
 
-func run() error {
-	seedDir := flag.String("dir", defaultSeedDir, "directory containing seed files")
-	seedFile := flag.String("file", "", "seed file to execute")
+	dir := flag.String("dir", "seeds", "directory containing seed files")
+	file := flag.String("file", "", "seed file to execute")
 	flag.Parse()
 
-	cfg := config.MustLoad()
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
 
-	db, err := database.Connect(context.Background(), *cfg)
+	db, err := database.Connect(ctx, runtime.Config.Database)
 	if err != nil {
-		return fmt.Errorf("connect database: %w", err)
+		runtime.Logger.Fatal().Err(err).Msg("connect database")
 	}
 	defer func() {
 		if err := db.Close(); err != nil {
-			color.Red("✘ failed to close database: %v", err)
+			runtime.Logger.Error().Err(err).Msg("close database")
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), seedTransactionTimeout)
-	defer cancel()
+	if err := seed(ctx, db, *dir, *file, runtime.Logger); err != nil {
+		runtime.Logger.Fatal().Err(err).Msg("seed database")
+	}
 
+	runtime.Logger.Info().Msg("seeding completed")
+}
+
+func seed(ctx context.Context, db *sql.DB, dir, file string, logger zerolog.Logger) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
+	defer func() { _ = tx.Rollback() }()
 
-	// Safe even after Commit(). Rollback() will simply return sql.ErrTxDone.
-	defer func() {
-		_ = tx.Rollback()
-	}()
-
-	if err := executeSeeds(ctx, tx, *seedDir, *seedFile); err != nil {
+	files, err := filesToSeed(dir, file)
+	if err != nil {
 		return err
+	}
+
+	for _, path := range files {
+		logger.Info().Str("file", filepath.Base(path)).Msg("seeding")
+		if err := executeFile(ctx, tx, path); err != nil {
+			return err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit transaction: %w", err)
 	}
-
-	color.Green("✔ database seeded")
-
 	return nil
 }
 
-func executeSeeds(ctx context.Context, tx *sql.Tx, seedDir, seedFile string) error {
-	if seedFile == "" {
-		return executeSeedDirectory(ctx, tx, seedDir)
+func filesToSeed(dir, file string) ([]string, error) {
+	if file != "" {
+		if filepath.Ext(file) != ".sql" {
+			return nil, errors.New("seed file must have a .sql extension")
+		}
+		if !filepath.IsAbs(file) {
+			file = filepath.Join(dir, file)
+		}
+		return []string{file}, nil
 	}
 
-	if filepath.Ext(seedFile) != ".sql" {
-		return errors.New("seed file must have a .sql extension")
-	}
-
-	path := seedFile
-
-	// Resolve relative paths against the configured seed directory.
-	// Absolute paths are used as-is.
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(seedDir, path)
-	}
-
-	return executeSeedFile(ctx, tx, path)
-}
-
-func executeSeedDirectory(ctx context.Context, tx *sql.Tx, seedDir string) error {
-	entries, err := os.ReadDir(seedDir)
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return fmt.Errorf("read seed directory: %w", err)
+		return nil, fmt.Errorf("read seed directory: %w", err)
 	}
 
 	var files []string
-
 	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".sql" {
-			continue
+		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".sql" {
+			files = append(files, filepath.Join(dir, entry.Name()))
 		}
-
-		files = append(files, filepath.Join(seedDir, entry.Name()))
 	}
-
 	if len(files) == 0 {
-		return fmt.Errorf("no .sql seed files found in %q", seedDir)
+		return nil, fmt.Errorf("no .sql seed files found in %q", dir)
 	}
-
-	// Execute in alphabetical order (001_, 002_, 003_, ...)
 	sort.Strings(files)
-
-	for _, seedFile := range files {
-		color.Cyan("→ applying seed %s", filepath.Base(seedFile))
-
-		if err := executeSeedFile(ctx, tx, seedFile); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return files, nil
 }
 
-func executeSeedFile(ctx context.Context, tx *sql.Tx, path string) error {
-	// #nosec G304 -- file path is intentionally provided via CLI flag
-	script, err := os.ReadFile(filepath.Clean(path))
+func executeFile(ctx context.Context, tx *sql.Tx, path string) error {
+	query, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- CLI-selected seed source.
 	if err != nil {
 		return fmt.Errorf("read %q: %w", path, err)
 	}
-
-	if _, err := tx.ExecContext(ctx, string(script)); err != nil {
-		return fmt.Errorf("%s: %w", filepath.Base(path), err)
+	if _, err := tx.ExecContext(ctx, string(query)); err != nil {
+		return fmt.Errorf("execute %q: %w", filepath.Base(path), err)
 	}
-
 	return nil
 }

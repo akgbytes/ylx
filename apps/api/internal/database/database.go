@@ -11,16 +11,16 @@ import (
 	"github.com/akgbytes/ylx/internal/config"
 )
 
-func Connect(ctx context.Context, cfg config.Config) (*sql.DB, error) {
-	db, err := sql.Open("pgx", cfg.DatabaseURL)
+func Connect(ctx context.Context, cfg config.DatabaseConfig) (*sql.DB, error) {
+	db, err := sql.Open("pgx", cfg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("sql open: %w", err)
 	}
 
-	db.SetMaxOpenConns(cfg.DatabaseMaxOpenConns)
-	db.SetMaxIdleConns(cfg.DatabaseMaxIdleConns)
-	db.SetConnMaxIdleTime(cfg.DatabaseConnMaxIdleTime)
-	db.SetConnMaxLifetime(cfg.DatabaseConnMaxLifetime)
+	db.SetMaxOpenConns(cfg.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.MaxIdleConns)
+	db.SetConnMaxIdleTime(cfg.ConnMaxIdleTime)
+	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 
 	if err := db.PingContext(ctx); err != nil {
 		pingErr := fmt.Errorf("ping database: %w", err)

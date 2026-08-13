@@ -1,27 +1,21 @@
 package main
 
 import (
-	"log/slog"
-	"os"
-	"time"
-
-	"github.com/akgbytes/ylx/internal/config"
+	"github.com/akgbytes/ylx/internal/app"
+	"github.com/akgbytes/ylx/internal/bootstrap"
 )
 
-const databaseConnectTimeout = 30 * time.Second
-
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level:     slog.LevelInfo,
-		AddSource: true,
-	}))
+	bootstrapLogger := bootstrap.NewBootstrapLogger()
 
-	cfg := config.MustLoad()
+	runtime, err := bootstrap.Load()
+	if err != nil {
+		bootstrapLogger.Fatal().Err(err).Msg("bootstrap application")
+	}
 
-	api := newAPIServer(logger, cfg, databaseConnectTimeout)
+	app := app.NewApplication(runtime.Config, runtime.Logger)
 
-	if err := api.run(); err != nil {
-		logger.Error("server exited", "error", err)
-		os.Exit(1)
+	if err := app.Run(); err != nil {
+		bootstrapLogger.Fatal().Err(err).Msg("server exited")
 	}
 }

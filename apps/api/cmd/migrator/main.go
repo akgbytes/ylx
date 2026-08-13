@@ -3,160 +3,135 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 
-	"github.com/fatih/color"
 	"github.com/golang-migrate/migrate/v4"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
-	"github.com/akgbytes/ylx/internal/config"
+	"github.com/akgbytes/ylx/internal/bootstrap"
 )
 
 const (
-	minimumCommandArgs     = 2
-	minimumDownCommandArgs = 3
+	minCommandArguments = 2
+	usage               = "usage: migrator <up|down|version|goto|force>"
 )
 
 func main() {
-	cfg := config.MustLoad()
-
-	if len(os.Args) < minimumCommandArgs {
-		color.Yellow("usage: migrator <up|down|version|goto|force>")
-		return
-	}
-
-	migrator, err := migrate.New(
-		"file://migrations",
-		cfg.DatabaseURL,
-	)
+	bootstraplogger := bootstrap.NewBootstrapLogger()
+	runtime, err := bootstrap.Load()
 	if err != nil {
-		color.Red("✘ failed to initialize migrator: %v", err)
-		return
+		bootstraplogger.Fatal().Err(err).Msg("bootstrap migrator")
 	}
 
+	if len(os.Args) < minCommandArguments {
+		runtime.Logger.Fatal().Msg(usage)
+	}
+
+	migrationsPath, err := filepath.Abs("migrations")
+	if err != nil {
+		runtime.Logger.Fatal().Err(err).Msg("resolve migrations directory")
+	}
+
+	migrator, err := migrate.New("file://"+migrationsPath, runtime.Config.Database.URL)
+	if err != nil {
+		runtime.Logger.Fatal().Err(err).Msg("initialize migrator")
+	}
 	defer func() {
 		sourceErr, databaseErr := migrator.Close()
-		if sourceErr != nil {
-			color.Red("✘ failed to close migration source: %v", sourceErr)
-		}
-		if databaseErr != nil {
-			color.Red("✘ failed to close migration database: %v", databaseErr)
+		if err := errors.Join(sourceErr, databaseErr); err != nil {
+			runtime.Logger.Error().Err(err).Msg("close migrator")
 		}
 	}()
 
-	dispatchCommand(migrator, os.Args)
+	if err := run(migrator, os.Args[1:]); err != nil {
+		runtime.Logger.Fatal().Err(err).Msg("migration failed")
+	}
+
+	if os.Args[1] != "version" {
+		runtime.Logger.Info().Msg("migration completed")
+	}
 }
 
-func dispatchCommand(migrator *migrate.Migrate, args []string) {
-	switch args[1] {
+func run(migrator *migrate.Migrate, args []string) error {
+	switch args[0] {
 	case "up":
-		applyMigrations(migrator)
+		return noChangeIsNil(migrator.Up())
 	case "down":
-		rollbackMigrations(migrator, args)
+		return down(migrator, args[1:])
 	case "version":
-		showVersion(migrator)
-	case "goto":
-		migrateToVersion(migrator, args)
-	case "force":
-		forceVersion(migrator, args)
-	default:
-		color.Yellow("usage: migrator <up|down|version|goto|force>")
-	}
-}
-
-func applyMigrations(migrator *migrate.Migrate) {
-	err := migrator.Up()
-
-	switch {
-	case err == nil:
-		color.Green("✔ migrations applied successfully")
-	case errors.Is(err, migrate.ErrNoChange):
-		color.Green("✔ all migrations already applied")
-	default:
-		color.Red("✘ migration failed: %v", err)
-	}
-}
-
-func rollbackMigrations(migrator *migrate.Migrate, args []string) {
-	if len(args) < minimumDownCommandArgs {
-		color.Yellow("usage: migrator down <steps|all>")
-		return
-	}
-
-	stepsOrAll := args[2]
-	if stepsOrAll == "all" {
-		if err := migrator.Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-			color.Red("✘ rollback failed: %v", err)
-			return
+		version, dirty, err := migrator.Version()
+		if errors.Is(err, migrate.ErrNilVersion) {
+			return writeVersion("version: none\n")
 		}
+		if err != nil {
+			return fmt.Errorf("get version: %w", err)
+		}
+		return writeVersion("version: %d (dirty: %t)\n", version, dirty)
+	case "goto":
+		return goTo(migrator, args[1:])
+	case "force":
+		return force(migrator, args[1:])
+	default:
+		return errors.New(usage)
+	}
+}
 
-		color.Green("✔ all migrations rolled back")
-		return
+func writeVersion(format string, args ...any) error {
+	if _, err := fmt.Fprintf(os.Stdout, format, args...); err != nil {
+		return fmt.Errorf("write version: %w", err)
+	}
+	return nil
+}
+
+func down(migrator *migrate.Migrate, args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: migrator down <steps|all>")
+	}
+	if args[0] == "all" {
+		return noChangeIsNil(migrator.Down())
 	}
 
-	steps, err := strconv.Atoi(stepsOrAll)
+	steps, err := strconv.Atoi(args[0])
 	if err != nil || steps <= 0 {
-		color.Red("✘ rollback steps must be a positive integer")
-		return
+		return errors.New("rollback steps must be a positive integer")
 	}
-
-	if err := migrator.Steps(-steps); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		color.Red("✘ rollback failed: %v", err)
-		return
-	}
-
-	color.Green("✔ rolled back %d migration(s)", steps)
+	return noChangeIsNil(migrator.Steps(-steps))
 }
 
-func showVersion(migrator *migrate.Migrate) {
-	version, dirty, err := migrator.Version()
-	if err != nil {
-		color.Red("✘ failed to get migration version: %v", err)
-		return
-	}
-
-	color.Cyan("ℹ current version: %d (dirty: %t)", version, dirty)
-}
-
-func migrateToVersion(migrator *migrate.Migrate, args []string) {
-	gotoFlags := flag.NewFlagSet("goto", flag.ContinueOnError)
-	version := gotoFlags.Uint("version", 0, "target migration version")
-
-	if err := gotoFlags.Parse(args[2:]); err != nil {
-		color.Red("✘ invalid goto arguments: %v", err)
-		return
+func goTo(migrator *migrate.Migrate, args []string) error {
+	flags := flag.NewFlagSet("goto", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	version := flags.Uint("version", 0, "target migration version")
+	if err := flags.Parse(args); err != nil {
+		return fmt.Errorf("parse goto arguments: %w", err)
 	}
 	if *version == 0 {
-		color.Yellow("usage: migrator goto --version <version>")
-		return
+		return errors.New("usage: migrator goto --version <version>")
 	}
-	if err := migrator.Migrate(*version); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		color.Red("✘ migration failed: %v", err)
-		return
-	}
-
-	color.Green("✔ migrated to version %d", *version)
+	return noChangeIsNil(migrator.Migrate(*version))
 }
 
-func forceVersion(migrator *migrate.Migrate, args []string) {
-	forceFlags := flag.NewFlagSet("force", flag.ContinueOnError)
-	version := forceFlags.Uint("version", 0, "force migration version")
-
-	if err := forceFlags.Parse(args[2:]); err != nil {
-		color.Red("✘ invalid force arguments: %v", err)
-		return
+func force(migrator *migrate.Migrate, args []string) error {
+	flags := flag.NewFlagSet("force", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	version := flags.Uint("version", 0, "force migration version")
+	if err := flags.Parse(args); err != nil {
+		return fmt.Errorf("parse force arguments: %w", err)
 	}
 	if *version == 0 {
-		color.Yellow("usage: migrator force --version <version>")
-		return
+		return errors.New("usage: migrator force --version <version>")
 	}
-	if err := migrator.Force(int(*version)); err != nil {
-		color.Red("✘ force failed: %v", err)
-		return
-	}
+	return migrator.Force(int(*version))
+}
 
-	color.Green("✔ forced migration version to %d", *version)
+func noChangeIsNil(err error) error {
+	if errors.Is(err, migrate.ErrNoChange) {
+		return nil
+	}
+	return err
 }
