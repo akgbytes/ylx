@@ -1,30 +1,26 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
-  "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "format": {
-      "cache": false
-    },
-    "format:check": {
-      "dependsOn": ["^format:check"]
+      "env": ["GOCACHE"],
+      "outputs": ["bin/**", "dist/**"]
     },
     "clean": {
       "cache": false
     },
+    "dev": {
+      "persistent": true,
+      "cache": false
+    },
+    "format": {
+      "cache": false
+    },
     "lint": {
-      "dependsOn": ["^lint"]
+      "env": ["GOCACHE"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": ["^typecheck"],
+      "env": ["GOCACHE"]
     }
   }
 }

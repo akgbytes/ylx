@@ -1,6 +1,7 @@
-.PHONY: build run format format-check lint clean migrate rollback
+.PHONY: build clean format lint migrate rollback run typecheck seed
 
 build:
+	@mkdir -p bin
 	@go build -o bin/api ./cmd/api
 
 run:
@@ -10,15 +11,14 @@ format:
 	@go mod tidy
 	@golangci-lint fmt
 
-format-check:
-	@golangci-lint fmt --diff
-	@go mod tidy -diff
-
 lint:
 	@golangci-lint run
 
 clean:
 	@rm -rf ./bin
+
+typecheck:
+	@go vet ./...
 
 migrate:
 	@go run ./cmd/migrator up
@@ -27,7 +27,4 @@ rollback:
 	@go run ./cmd/migrator down 1
 
 seed:
-	@go run ./cmd/seeder
-
-seed-listings:
-	@go run ./cmd/seeder --file=001_listings.sql
+	@go run ./cmd/seeder $(SEED_ARGS)

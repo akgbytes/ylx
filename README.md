@@ -13,7 +13,7 @@ other, communicate directly, and arrange payment and delivery themselves.
 
 - Go 1.26.6+
 - Node.js 22.12.0+
-- pnpm 9
+- pnpm 10
 
 ### Run the API
 

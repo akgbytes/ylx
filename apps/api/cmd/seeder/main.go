@@ -18,41 +18,49 @@ import (
 	"github.com/akgbytes/ylx/internal/logger"
 )
 
-const seedTransactionTimeout = 30 * time.Second
+const seedOperationTimeout = 30 * time.Second
 
 func main() {
-	logger := logger.BootstrapLogger()
+	log := logger.BootstrapLogger()
 
 	cfg, err := config.Load()
 	if err != nil {
-		logger.Fatal().Err(err).Msg("bootstrap seeder")
+		log.Fatal().Err(err).Msg("bootstrap seeder")
 	}
 
 	seedDir := flag.String("dir", "seeds", "directory containing seed files")
 	seedFile := flag.String("file", "", "seed file to execute")
 	flag.Parse()
 
-	ctx, cancel := context.WithTimeout(context.Background(), seedTransactionTimeout)
+	if err := seedDatabase(cfg.Database, *seedDir, *seedFile, log); err != nil {
+		log.Fatal().Err(err).Msg("seed database")
+	}
+
+	log.Info().Msg("database seeded")
+}
+
+func seedDatabase(
+	cfg config.DatabaseConfig,
+	seedDir, seedFile string,
+	log zerolog.Logger,
+) error {
+	ctx, cancel := context.WithTimeout(context.Background(), seedOperationTimeout)
 	defer cancel()
 
-	db, err := database.Connect(ctx, cfg.Database)
+	db, err := database.Connect(ctx, cfg)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("connect database")
+		return fmt.Errorf("connect database: %w", err)
 	}
 	defer func() {
 		if err := db.Close(); err != nil {
-			logger.Error().Err(err).Msg("close database")
+			log.Error().Err(err).Msg("close database")
 		}
 	}()
 
-	if err := seed(ctx, db, *seedDir, *seedFile, logger); err != nil {
-		logger.Fatal().Err(err).Msg("seed database")
-	}
-
-	logger.Info().Msg("database seeded")
+	return seed(ctx, db, seedDir, seedFile, log)
 }
 
-func seed(ctx context.Context, db *sql.DB, seedDir, seedFile string, logger zerolog.Logger) error {
+func seed(ctx context.Context, db *sql.DB, seedDir, seedFile string, log zerolog.Logger) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -65,7 +73,7 @@ func seed(ctx context.Context, db *sql.DB, seedDir, seedFile string, logger zero
 	}
 
 	for _, path := range files {
-		logger.Info().Str("file", filepath.Base(path)).Msg("applying seed")
+		log.Info().Str("file", filepath.Base(path)).Msg("applying seed")
 		if err := executeFile(ctx, tx, path); err != nil {
 			return err
 		}

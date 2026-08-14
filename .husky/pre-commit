@@ -1,3 +1,5 @@
+#!/bin/sh
 set -e
 
-pnpm lint-staged
+pnpm format
+pnpm lint

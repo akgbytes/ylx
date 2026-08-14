@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/rs/zerolog"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -23,40 +24,48 @@ const (
 )
 
 func main() {
-	logger := logger.BootstrapLogger()
+	log := logger.BootstrapLogger()
 
 	cfg, err := config.Load()
 	if err != nil {
-		logger.Fatal().Err(err).Msg("bootstrap migrator")
+		log.Fatal().Err(err).Msg("bootstrap migrator")
 	}
 
 	if len(os.Args) < minCommandArguments {
-		logger.Fatal().Msg(usage)
+		log.Fatal().Msg(usage)
 	}
 
 	migrationsPath, err := filepath.Abs("migrations")
 	if err != nil {
-		logger.Fatal().Err(err).Msg("resolve migrations directory")
+		log.Fatal().Err(err).Msg("resolve migrations directory")
 	}
 
 	migrator, err := migrate.New("file://"+migrationsPath, cfg.Database.URL)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("initialize migrator")
+		log.Fatal().Err(err).Msg("initialize migrator")
 	}
+	if err := runMigrations(migrator, os.Args[1:], log); err != nil {
+		log.Fatal().Err(err).Msg("migration failed")
+	}
+}
+
+func runMigrations(migrator *migrate.Migrate, args []string, log zerolog.Logger) error {
 	defer func() {
 		sourceErr, databaseErr := migrator.Close()
 		if err := errors.Join(sourceErr, databaseErr); err != nil {
-			logger.Error().Err(err).Msg("close migrator")
+			log.Error().Err(err).Msg("close migrator")
 		}
 	}()
 
-	if err := run(migrator, os.Args[1:]); err != nil {
-		logger.Fatal().Err(err).Msg("migration failed")
+	if err := run(migrator, args); err != nil {
+		return err
 	}
 
-	if os.Args[1] != "version" {
-		logger.Info().Msg("migration completed")
+	if args[0] != "version" {
+		log.Info().Msg("migration completed")
 	}
+
+	return nil
 }
 
 func run(migrator *migrate.Migrate, args []string) error {
