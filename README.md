@@ -11,7 +11,7 @@ other, communicate directly, and arrange payment and delivery themselves.
 
 ### Requirements
 
-- Go 1.26.5+
+- Go 1.26.6+
 - Node.js 22.12.0+
 - pnpm 9
 
