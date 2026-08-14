@@ -2,20 +2,26 @@ package main
 
 import (
 	"github.com/akgbytes/ylx/internal/app"
-	"github.com/akgbytes/ylx/internal/bootstrap"
+	"github.com/akgbytes/ylx/internal/config"
+	"github.com/akgbytes/ylx/internal/logger"
 )
 
 func main() {
-	bootstrapLogger := bootstrap.NewBootstrapLogger()
+	bootstrapLogger := logger.BootstrapLogger()
 
-	runtime, err := bootstrap.Load()
+	cfg, err := config.Load()
 	if err != nil {
 		bootstrapLogger.Fatal().Err(err).Msg("bootstrap application")
 	}
 
-	application := app.NewApplication(runtime.Config, runtime.Logger)
+	logger, err := logger.New(&cfg.Log)
+	if err != nil {
+		bootstrapLogger.Fatal().Err(err).Msg("bootstrap application")
+	}
+
+	application := app.NewApplication(cfg, logger)
 
 	if err := application.Run(); err != nil {
-		runtime.Logger.Fatal().Err(err).Msg("server exited")
+		logger.Fatal().Err(err).Msg("server exited")
 	}
 }

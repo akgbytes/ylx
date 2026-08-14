@@ -13,7 +13,8 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
-	"github.com/akgbytes/ylx/internal/bootstrap"
+	"github.com/akgbytes/ylx/internal/config"
+	"github.com/akgbytes/ylx/internal/logger"
 )
 
 const (
@@ -22,38 +23,39 @@ const (
 )
 
 func main() {
-	bootstrapLogger := bootstrap.NewBootstrapLogger()
-	runtime, err := bootstrap.Load()
+	logger := logger.BootstrapLogger()
+
+	cfg, err := config.Load()
 	if err != nil {
-		bootstrapLogger.Fatal().Err(err).Msg("bootstrap migrator")
+		logger.Fatal().Err(err).Msg("bootstrap migrator")
 	}
 
 	if len(os.Args) < minCommandArguments {
-		runtime.Logger.Fatal().Msg(usage)
+		logger.Fatal().Msg(usage)
 	}
 
 	migrationsPath, err := filepath.Abs("migrations")
 	if err != nil {
-		runtime.Logger.Fatal().Err(err).Msg("resolve migrations directory")
+		logger.Fatal().Err(err).Msg("resolve migrations directory")
 	}
 
-	migrator, err := migrate.New("file://"+migrationsPath, runtime.Config.Database.URL)
+	migrator, err := migrate.New("file://"+migrationsPath, cfg.Database.URL)
 	if err != nil {
-		runtime.Logger.Fatal().Err(err).Msg("initialize migrator")
+		logger.Fatal().Err(err).Msg("initialize migrator")
 	}
 	defer func() {
 		sourceErr, databaseErr := migrator.Close()
 		if err := errors.Join(sourceErr, databaseErr); err != nil {
-			runtime.Logger.Error().Err(err).Msg("close migrator")
+			logger.Error().Err(err).Msg("close migrator")
 		}
 	}()
 
 	if err := run(migrator, os.Args[1:]); err != nil {
-		runtime.Logger.Fatal().Err(err).Msg("migration failed")
+		logger.Fatal().Err(err).Msg("migration failed")
 	}
 
 	if os.Args[1] != "version" {
-		runtime.Logger.Info().Msg("migration completed")
+		logger.Info().Msg("migration completed")
 	}
 }
 

@@ -11,7 +11,17 @@ import (
 	"github.com/akgbytes/ylx/internal/config"
 )
 
-func New(cfg *config.LogConfig, timeFormat string) (zerolog.Logger, error) {
+const timeFormat = "2006-01-02 15:04:05"
+
+func BootstrapLogger() zerolog.Logger {
+	return zerolog.
+		New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: timeFormat}).
+		With().
+		Timestamp().
+		Logger()
+}
+
+func New(cfg *config.LogConfig) (zerolog.Logger, error) {
 	level, err := zerolog.ParseLevel(cfg.Level)
 	if err != nil {
 		return zerolog.Logger{}, fmt.Errorf(`parse log level %q: %w`, cfg.Level, err)

@@ -13,17 +13,19 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/akgbytes/ylx/internal/bootstrap"
+	"github.com/akgbytes/ylx/internal/config"
 	"github.com/akgbytes/ylx/internal/database"
+	"github.com/akgbytes/ylx/internal/logger"
 )
 
 const seedTransactionTimeout = 30 * time.Second
 
 func main() {
-	bootstrapLogger := bootstrap.NewBootstrapLogger()
-	runtime, err := bootstrap.Load()
+	logger := logger.BootstrapLogger()
+
+	cfg, err := config.Load()
 	if err != nil {
-		bootstrapLogger.Fatal().Err(err).Msg("bootstrap seeder")
+		logger.Fatal().Err(err).Msg("bootstrap seeder")
 	}
 
 	seedDir := flag.String("dir", "seeds", "directory containing seed files")
@@ -33,21 +35,21 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), seedTransactionTimeout)
 	defer cancel()
 
-	db, err := database.Connect(ctx, runtime.Config.Database)
+	db, err := database.Connect(ctx, cfg.Database)
 	if err != nil {
-		runtime.Logger.Fatal().Err(err).Msg("connect database")
+		logger.Fatal().Err(err).Msg("connect database")
 	}
 	defer func() {
 		if err := db.Close(); err != nil {
-			runtime.Logger.Error().Err(err).Msg("close database")
+			logger.Error().Err(err).Msg("close database")
 		}
 	}()
 
-	if err := seed(ctx, db, *seedDir, *seedFile, runtime.Logger); err != nil {
-		runtime.Logger.Fatal().Err(err).Msg("seed database")
+	if err := seed(ctx, db, *seedDir, *seedFile, logger); err != nil {
+		logger.Fatal().Err(err).Msg("seed database")
 	}
 
-	runtime.Logger.Info().Msg("database seeded")
+	logger.Info().Msg("database seeded")
 }
 
 func seed(ctx context.Context, db *sql.DB, seedDir, seedFile string, logger zerolog.Logger) error {
