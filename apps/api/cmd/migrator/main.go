@@ -22,10 +22,10 @@ const (
 )
 
 func main() {
-	bootstraplogger := bootstrap.NewBootstrapLogger()
+	bootstrapLogger := bootstrap.NewBootstrapLogger()
 	runtime, err := bootstrap.Load()
 	if err != nil {
-		bootstraplogger.Fatal().Err(err).Msg("bootstrap migrator")
+		bootstrapLogger.Fatal().Err(err).Msg("bootstrap migrator")
 	}
 
 	if len(os.Args) < minCommandArguments {

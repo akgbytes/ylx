@@ -17,20 +17,20 @@ import (
 	"github.com/akgbytes/ylx/internal/database"
 )
 
-const defaultTimeout = 30 * time.Second
+const seedTransactionTimeout = 30 * time.Second
 
 func main() {
-	bootstraplogger := bootstrap.NewBootstrapLogger()
+	bootstrapLogger := bootstrap.NewBootstrapLogger()
 	runtime, err := bootstrap.Load()
 	if err != nil {
-		bootstraplogger.Fatal().Err(err).Msg("bootstrap seeder")
+		bootstrapLogger.Fatal().Err(err).Msg("bootstrap seeder")
 	}
 
-	dir := flag.String("dir", "seeds", "directory containing seed files")
-	file := flag.String("file", "", "seed file to execute")
+	seedDir := flag.String("dir", "seeds", "directory containing seed files")
+	seedFile := flag.String("file", "", "seed file to execute")
 	flag.Parse()
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), seedTransactionTimeout)
 	defer cancel()
 
 	db, err := database.Connect(ctx, runtime.Config.Database)
@@ -43,27 +43,27 @@ func main() {
 		}
 	}()
 
-	if err := seed(ctx, db, *dir, *file, runtime.Logger); err != nil {
+	if err := seed(ctx, db, *seedDir, *seedFile, runtime.Logger); err != nil {
 		runtime.Logger.Fatal().Err(err).Msg("seed database")
 	}
 
-	runtime.Logger.Info().Msg("seeding completed")
+	runtime.Logger.Info().Msg("database seeded")
 }
 
-func seed(ctx context.Context, db *sql.DB, dir, file string, logger zerolog.Logger) error {
+func seed(ctx context.Context, db *sql.DB, seedDir, seedFile string, logger zerolog.Logger) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	files, err := filesToSeed(dir, file)
+	files, err := filesToSeed(seedDir, seedFile)
 	if err != nil {
 		return err
 	}
 
 	for _, path := range files {
-		logger.Info().Str("file", filepath.Base(path)).Msg("seeding")
+		logger.Info().Str("file", filepath.Base(path)).Msg("applying seed")
 		if err := executeFile(ctx, tx, path); err != nil {
 			return err
 		}
@@ -75,18 +75,18 @@ func seed(ctx context.Context, db *sql.DB, dir, file string, logger zerolog.Logg
 	return nil
 }
 
-func filesToSeed(dir, file string) ([]string, error) {
-	if file != "" {
-		if filepath.Ext(file) != ".sql" {
+func filesToSeed(seedDir, seedFile string) ([]string, error) {
+	if seedFile != "" {
+		if filepath.Ext(seedFile) != ".sql" {
 			return nil, errors.New("seed file must have a .sql extension")
 		}
-		if !filepath.IsAbs(file) {
-			file = filepath.Join(dir, file)
+		if !filepath.IsAbs(seedFile) {
+			seedFile = filepath.Join(seedDir, seedFile)
 		}
-		return []string{file}, nil
+		return []string{seedFile}, nil
 	}
 
-	entries, err := os.ReadDir(dir)
+	entries, err := os.ReadDir(seedDir)
 	if err != nil {
 		return nil, fmt.Errorf("read seed directory: %w", err)
 	}
@@ -94,22 +94,22 @@ func filesToSeed(dir, file string) ([]string, error) {
 	var files []string
 	for _, entry := range entries {
 		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".sql" {
-			files = append(files, filepath.Join(dir, entry.Name()))
+			files = append(files, filepath.Join(seedDir, entry.Name()))
 		}
 	}
 	if len(files) == 0 {
-		return nil, fmt.Errorf("no .sql seed files found in %q", dir)
+		return nil, fmt.Errorf("no .sql seed files found in %q", seedDir)
 	}
 	sort.Strings(files)
 	return files, nil
 }
 
 func executeFile(ctx context.Context, tx *sql.Tx, path string) error {
-	query, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- CLI-selected seed source.
+	script, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- CLI-selected seed source.
 	if err != nil {
 		return fmt.Errorf("read %q: %w", path, err)
 	}
-	if _, err := tx.ExecContext(ctx, string(query)); err != nil {
+	if _, err := tx.ExecContext(ctx, string(script)); err != nil {
 		return fmt.Errorf("execute %q: %w", filepath.Base(path), err)
 	}
 	return nil

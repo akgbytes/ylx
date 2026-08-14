@@ -12,7 +12,7 @@ func NewHealthHandler() *HealthHandler {
 }
 
 func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
 	_ = json.NewEncoder(w).Encode(HealthResponse{

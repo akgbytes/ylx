@@ -43,15 +43,15 @@ func (app *Application) Run() error {
 	app.logger.Info().Msg("database connected")
 
 	handler := router.NewRouter(db)
-
 	handler = middleware.RequestID(app.logger)(handler)
 
 	httpServer := http.Server{
-		Addr:         app.config.Server.Addr,
-		Handler:      handler,
-		ReadTimeout:  app.config.Server.ReadTimeout,
-		WriteTimeout: app.config.Server.WriteTimeout,
-		IdleTimeout:  app.config.Server.IdleTimeout,
+		Addr:              app.config.Server.Addr,
+		Handler:           handler,
+		ReadTimeout:       app.config.Server.ReadTimeout,
+		ReadHeaderTimeout: app.config.Server.ReadHeaderTimeout,
+		WriteTimeout:      app.config.Server.WriteTimeout,
+		IdleTimeout:       app.config.Server.IdleTimeout,
 	}
 
 	app.logger.Info().Str("addr", httpServer.Addr).Msg("server listening")

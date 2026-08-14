@@ -2,11 +2,11 @@ package handler
 
 import (
 	"database/sql"
-	"encoding/json"
 	"net/http"
 
 	"github.com/rs/zerolog"
 
+	"github.com/akgbytes/ylx/internal/httpx"
 	"github.com/akgbytes/ylx/internal/model"
 )
 
@@ -31,7 +31,7 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(), query)
 	if err != nil {
 		logger.Err(err).Msg("query listings")
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		httpx.WriteError(w, httpx.CodeInternal, "internal server error")
 		return
 	}
 	defer func() {
@@ -40,7 +40,7 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	var listings []model.Listing
+	listings := []model.Listing{}
 
 	for rows.Next() {
 		var listing model.Listing
@@ -55,7 +55,7 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 			&listing.UpdatedAt,
 		); err != nil {
 			logger.Err(err).Msg("scan listing")
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			httpx.WriteError(w, httpx.CodeInternal, "internal server error")
 			return
 		}
 		listings = append(listings, listing)
@@ -63,18 +63,13 @@ func (h *ListingsHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	if err := rows.Err(); err != nil {
 		logger.Err(err).Msg("iterate listing rows")
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		httpx.WriteError(w, httpx.CodeInternal, "internal server error")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
 	logger.Info().Msg("listing fetched")
 
-	_ = json.NewEncoder(w).Encode(ListListingsResponse{
-		Listings: listings,
-	})
+	httpx.WriteJSON(w, http.StatusOK, listings, nil)
 }
 
 func (h *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -89,25 +84,19 @@ func (h *ListingsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	result, err := h.db.ExecContext(r.Context(), query, listingID)
 	if err != nil {
 		logger.Err(err).Str("listing_id", listingID).Msg("delete listing")
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		httpx.WriteError(w, httpx.CodeInternal, "internal server error")
 		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		logger.Err(err).Str("listing_id", listingID).Msg("get deleted listing count")
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		httpx.WriteError(w, httpx.CodeInternal, "internal server error")
 		return
 	}
 
 	if rowsAffected == 0 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-
-		_ = json.NewEncoder(w).Encode(ListingNotFoundResponse{
-			Message: "listing not found",
-		})
-
+		httpx.WriteError(w, httpx.CodeNotFound, "listing not found")
 		return
 	}
 

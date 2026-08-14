@@ -13,9 +13,9 @@ func main() {
 		bootstrapLogger.Fatal().Err(err).Msg("bootstrap application")
 	}
 
-	app := app.NewApplication(runtime.Config, runtime.Logger)
+	application := app.NewApplication(runtime.Config, runtime.Logger)
 
-	if err := app.Run(); err != nil {
-		bootstrapLogger.Fatal().Err(err).Msg("server exited")
+	if err := application.Run(); err != nil {
+		runtime.Logger.Fatal().Err(err).Msg("server exited")
 	}
 }
