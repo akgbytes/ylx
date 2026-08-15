@@ -44,7 +44,7 @@ func WriteValidationError(w http.ResponseWriter, field, message string) {
 
 func statusFor(code ErrorCode) int {
 	switch code {
-	case CodeValidation:
+	case CodeBadRequest, CodeMalformedJSON, CodeValidation:
 		return http.StatusBadRequest
 	case CodeUnauthorized:
 		return http.StatusUnauthorized
@@ -54,6 +54,10 @@ func statusFor(code ErrorCode) int {
 		return http.StatusNotFound
 	case CodeConflict:
 		return http.StatusConflict
+	case CodeUnprocessable:
+		return http.StatusUnprocessableEntity
+	case CodeUnsupportedMedia:
+		return http.StatusUnsupportedMediaType
 	case CodeInternal:
 		return http.StatusInternalServerError
 	default:

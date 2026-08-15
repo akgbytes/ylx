@@ -42,5 +42,5 @@ func New(cfg *config.LogConfig) (zerolog.Logger, error) {
 	}
 
 	zerolog.TimeFieldFormat = timeFormat
-	return zerolog.New(output).Level(level).With().Timestamp().Logger(), nil
+	return zerolog.New(output).Level(level).With().Timestamp().Caller().Logger(), nil
 }

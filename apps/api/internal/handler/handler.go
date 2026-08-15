@@ -5,13 +5,13 @@ import (
 )
 
 type Handlers struct {
-	Health   *HealthHandler
-	Listings *ListingsHandler
+	Health  *HealthHandler
+	Listing *ListingHandler
 }
 
 func NewHandlers(db *sql.DB) *Handlers {
 	return &Handlers{
-		Health:   NewHealthHandler(),
-		Listings: NewListingsHandler(db),
+		Health:  NewHealthHandler(),
+		Listing: NewListingHandler(db),
 	}
 }

@@ -12,7 +12,7 @@ func NewRouter(db *sql.DB) http.Handler {
 	handlers := handler.NewHandlers(db)
 
 	registerHealthRoutes(mux, handlers.Health)
-	registerListingsRoutes(mux, handlers.Listings)
+	registerListingRoutes(mux, handlers.Listing)
 
 	return mux
 }
