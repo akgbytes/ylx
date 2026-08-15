@@ -26,7 +26,7 @@ func NewApplication(config *config.Config, logger zerolog.Logger) *Application {
 }
 
 func (app *Application) Run() error {
-	connectCtx, cancel := context.WithTimeout(context.Background(), app.config.Server.DatabaseConnectTimeout)
+	connectCtx, cancel := context.WithTimeout(context.Background(), app.config.Database.DatabaseConnectTimeout)
 	db, err := database.Connect(connectCtx, app.config.Database)
 	cancel()
 
