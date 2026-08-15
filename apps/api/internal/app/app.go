@@ -10,6 +10,7 @@ import (
 	"github.com/akgbytes/ylx/internal/config"
 	"github.com/akgbytes/ylx/internal/database"
 	"github.com/akgbytes/ylx/internal/middleware"
+	"github.com/akgbytes/ylx/internal/redis"
 	"github.com/akgbytes/ylx/internal/router"
 )
 
@@ -26,9 +27,9 @@ func NewApplication(config *config.Config, logger zerolog.Logger) *Application {
 }
 
 func (app *Application) Run() error {
-	connectCtx, cancel := context.WithTimeout(context.Background(), app.config.Database.DatabaseConnectTimeout)
-	db, err := database.Connect(connectCtx, app.config.Database)
-	cancel()
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), app.config.Database.DatabaseConnectTimeout)
+	db, err := database.Connect(dbCtx, app.config.Database)
+	dbCancel()
 
 	if err != nil {
 		return fmt.Errorf("connect database: %w", err)
@@ -41,6 +42,22 @@ func (app *Application) Run() error {
 	}()
 
 	app.logger.Info().Msg("database connected")
+
+	redisCtx, redisCancel := context.WithTimeout(context.Background(), app.config.Redis.RedisConnectTimeout)
+	redisClient, err := redis.NewClient(redisCtx, app.config.Redis)
+	redisCancel()
+
+	if err != nil {
+		return fmt.Errorf("connect redis: %w", err)
+	}
+
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			app.logger.Err(err).Msg("close redis")
+		}
+	}()
+
+	app.logger.Info().Msg("redis connected")
 
 	handler := router.NewRouter(db)
 	handler = middleware.RequestID(app.logger)(handler)
