@@ -1,0 +1,21 @@
+{
+  "name": "YLX - The Marketplace for Developers",
+  "short_name": "YLX",
+  "description": "A developer-first marketplace for buying and selling tech gear.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#0068f2",
+  "icons": [
+    {
+      "src": "/brand/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
