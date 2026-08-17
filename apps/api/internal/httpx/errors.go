@@ -3,64 +3,73 @@ package httpx
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"time"
 )
 
-type ErrorCode string
+type ErrorMeta struct {
+	RetryAfterSeconds *int64     `json:"retry_after_seconds,omitempty"`
+	RetryAfterAt      *time.Time `json:"retry_after_at,omitempty"`
+	Limit             *int       `json:"limit,omitempty"`
+	Remaining         *int       `json:"remaining,omitempty"`
+	ResetAt           *time.Time `json:"reset_at,omitempty"`
+	Field             *string    `json:"field,omitempty"`
+}
 
 type APIError struct {
-	Code    ErrorCode `json:"code"`
-	Message string    `json:"message"`
-	Field   string    `json:"field,omitempty"`
+	Code    ErrorCode  `json:"code"`
+	Message string     `json:"message"`
+	Meta    *ErrorMeta `json:"meta,omitempty"`
 }
 
 type ErrorResponse struct {
 	Error APIError `json:"error"`
 }
 
-func WriteError(w http.ResponseWriter, code ErrorCode, message string) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(statusFor(code))
+func WriteCooldownError(w http.ResponseWriter, code ErrorCode, message string, retryAt time.Time) {
+	secs := max(int64(time.Until(retryAt).Seconds()), 0)
+	w.Header().Set("Retry-After", strconv.FormatInt(secs, 10))
+	writeError(w, APIError{
+		Code:    code,
+		Message: message,
+		Meta: &ErrorMeta{
+			RetryAfterSeconds: &secs,
+			RetryAfterAt:      &retryAt,
+		},
+	})
+}
 
-	_ = json.NewEncoder(w).Encode(ErrorResponse{
-		Error: APIError{
-			Code:    code,
-			Message: message,
+func WriteRateLimitError(w http.ResponseWriter, code ErrorCode, message string, limit, remaining int, resetAt time.Time) {
+	secs := max(int64(time.Until(resetAt).Seconds()), 0)
+	w.Header().Set("Retry-After", strconv.FormatInt(secs, 10))
+	writeError(w, APIError{
+		Code:    code,
+		Message: message,
+		Meta: &ErrorMeta{
+			Limit:     &limit,
+			Remaining: &remaining,
+			ResetAt:   &resetAt,
 		},
 	})
 }
 
 func WriteValidationError(w http.ResponseWriter, field, message string) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(statusFor(CodeValidation))
-
-	_ = json.NewEncoder(w).Encode(ErrorResponse{
-		Error: APIError{
-			Code:    CodeValidation,
-			Message: message,
-			Field:   field,
-		},
+	writeError(w, APIError{
+		Code:    CodeValidation,
+		Message: message,
+		Meta:    &ErrorMeta{Field: &field},
 	})
 }
 
-func statusFor(code ErrorCode) int {
-	switch code {
-	case CodeBadRequest, CodeMalformedJSON, CodeValidation:
-		return http.StatusBadRequest
-	case CodeUnauthorized:
-		return http.StatusUnauthorized
-	case CodeForbidden:
-		return http.StatusForbidden
-	case CodeNotFound:
-		return http.StatusNotFound
-	case CodeConflict:
-		return http.StatusConflict
-	case CodeUnprocessable:
-		return http.StatusUnprocessableEntity
-	case CodeUnsupportedMedia:
-		return http.StatusUnsupportedMediaType
-	case CodeInternal:
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
-	}
+func WriteError(w http.ResponseWriter, code ErrorCode, message string) {
+	writeError(w, APIError{Code: code, Message: message})
+}
+
+func writeError(w http.ResponseWriter, apiError APIError) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(statusFor(apiError.Code))
+
+	_ = json.NewEncoder(w).Encode(ErrorResponse{
+		Error: apiError,
+	})
 }

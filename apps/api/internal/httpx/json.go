@@ -7,25 +7,22 @@ import (
 	"net/http"
 )
 
-type Meta struct {
+type OffsetPageMeta struct {
 	Page       int `json:"page"`
 	Limit      int `json:"limit"`
 	TotalPages int `json:"total_pages"`
+	TotalCount int `json:"total_count"`
 }
 
-type APIResponse struct {
-	Data any   `json:"data"`
-	Meta *Meta `json:"meta,omitempty"`
+type CursorPageMeta struct {
+	NextCursor *string `json:"next_cursor,omitempty"`
+	HasMore    bool    `json:"has_more"`
+	Limit      int     `json:"limit"`
 }
 
-func WriteJSON(w http.ResponseWriter, status int, data any, meta *Meta) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-
-	_ = json.NewEncoder(w).Encode(APIResponse{
-		Data: data,
-		Meta: meta,
-	})
+type SuccessResponse struct {
+	Data any `json:"data"`
+	Meta any `json:"meta,omitempty"`
 }
 
 func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
@@ -49,4 +46,23 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	}
 
 	return true
+}
+
+func WriteJSON(w http.ResponseWriter, status int, data any) {
+	writeJSON(w, status, SuccessResponse{
+		Data: data,
+	})
+}
+
+func WriteJSONWithMeta(w http.ResponseWriter, status int, data, meta any) {
+	writeJSON(w, status, SuccessResponse{
+		Data: data,
+		Meta: meta,
+	})
+}
+
+func writeJSON(w http.ResponseWriter, status int, response SuccessResponse) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(response)
 }
