@@ -6,8 +6,8 @@ CREATE TABLE listings (
   city TEXT NOT NULL,
   seller_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'draft'
-    CHECK (status IN ('draft', 'active', 'sold')),
+  status TEXT NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active', 'sold')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

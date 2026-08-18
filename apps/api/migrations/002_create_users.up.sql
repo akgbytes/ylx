@@ -5,7 +5,6 @@ CREATE TABLE users (
   password_hash TEXT NOT NULL,
   refresh_token_hash TEXT,
   refresh_token_expires_at TIMESTAMPTZ,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT users_refresh_token_pair CHECK (
