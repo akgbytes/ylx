@@ -24,6 +24,6 @@ func NewRouter(
 
 	registerHealthRoutes(mux, handlers.Health)
 	registerListingRoutes(mux, handlers.Listing, middlewares.RequireAuth)
-	registerAuthRoutes(mux, handlers.Auth)
+	registerAuthRoutes(mux, handlers.Auth, middlewares.RequireAuth)
 	return mux
 }

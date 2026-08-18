@@ -9,8 +9,45 @@ import (
 
 	"github.com/akgbytes/ylx/internal/auth"
 	"github.com/akgbytes/ylx/internal/httpx"
+	"github.com/akgbytes/ylx/internal/middleware"
 	"github.com/akgbytes/ylx/internal/model"
 )
+
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logger := zerolog.Ctx(ctx)
+
+	userID, ok := middleware.UserIDFromContext(ctx)
+	if !ok {
+		httpx.WriteError(w, httpx.CodeUnauthorized, "authentication required")
+		return
+	}
+
+	query := `
+		SELECT id, name, email
+		FROM users
+		WHERE id = $1 AND is_active = TRUE
+	`
+
+	var user signedInUserResponse
+	err := h.db.QueryRowContext(ctx, query, userID).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		h.sessions.ClearCookies(w)
+		httpx.WriteError(w, httpx.CodeUnauthorized, "invalid or expired session")
+		return
+	}
+	if err != nil {
+		logger.Err(err).Str("user_id", userID).Msg("find current user")
+		httpx.WriteError(w, httpx.CodeInternal, "internal server error")
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, user)
+}
 
 func (h *AuthHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
