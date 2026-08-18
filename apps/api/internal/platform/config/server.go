@@ -10,19 +10,20 @@ import (
 type ServerConfig struct {
 	Addr              string
 	Env               string
+	ReadHeaderTimeout time.Duration
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
 	IdleTimeout       time.Duration
-	ReadHeaderTimeout time.Duration
+	ShutdownTimeout   time.Duration
 }
 
 func loadServerConfig() (ServerConfig, error) {
-	readTimeout, err := parseDuration("READ_TIMEOUT")
+	readHeaderTimeout, err := parseDuration("READ_HEADER_TIMEOUT")
 	if err != nil {
 		return ServerConfig{}, err
 	}
 
-	readHeaderTimeout, err := parseDuration("READ_HEADER_TIMEOUT")
+	readTimeout, err := parseDuration("READ_TIMEOUT")
 	if err != nil {
 		return ServerConfig{}, err
 	}
@@ -37,13 +38,19 @@ func loadServerConfig() (ServerConfig, error) {
 		return ServerConfig{}, err
 	}
 
+	shutdownTimeout, err := parseDuration("SHUTDOWN_TIMEOUT")
+	if err != nil {
+		return ServerConfig{}, err
+	}
+
 	return ServerConfig{
 		Addr:              os.Getenv("ADDR"),
 		Env:               os.Getenv("ENV"),
-		ReadTimeout:       readTimeout,
 		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
+		ShutdownTimeout:   shutdownTimeout,
 	}, nil
 }
 
@@ -60,6 +67,10 @@ func (c *ServerConfig) validate() error {
 		return errors.New("invalid configuration: ENV must be 'dev' or 'prod'")
 	}
 
+	if c.ReadHeaderTimeout <= 0 {
+		return errors.New("invalid configuration: READ_HEADER_TIMEOUT must be greater than 0")
+	}
+
 	if c.ReadTimeout <= 0 {
 		return errors.New("invalid configuration: READ_TIMEOUT must be greater than 0")
 	}
@@ -72,8 +83,8 @@ func (c *ServerConfig) validate() error {
 		return errors.New("invalid configuration: IDLE_TIMEOUT must be greater than 0")
 	}
 
-	if c.ReadHeaderTimeout <= 0 {
-		return errors.New("invalid configuration: READ_HEADER_TIMEOUT must be greater than 0")
+	if c.ShutdownTimeout <= 0 {
+		return errors.New("invalid configuration: SHUTDOWN_TIMEOUT must be greater than 0")
 	}
 
 	return nil

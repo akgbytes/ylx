@@ -7,6 +7,10 @@ import (
 
 type Handler struct{}
 
+type Response struct {
+	Status string `json:"status"`
+}
+
 func NewHandler() *Handler {
 	return &Handler{}
 }
