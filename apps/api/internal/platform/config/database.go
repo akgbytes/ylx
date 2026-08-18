@@ -8,12 +8,12 @@ import (
 )
 
 type DatabaseConfig struct {
-	URL                    string
-	MaxOpenConns           int
-	MaxIdleConns           int
-	ConnMaxIdleTime        time.Duration
-	ConnMaxLifetime        time.Duration
-	DatabaseConnectTimeout time.Duration
+	URL             string
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxIdleTime time.Duration
+	ConnMaxLifetime time.Duration
+	ConnectTimeout  time.Duration
 }
 
 func loadDatabaseConfig() (DatabaseConfig, error) {
@@ -37,18 +37,18 @@ func loadDatabaseConfig() (DatabaseConfig, error) {
 		return DatabaseConfig{}, err
 	}
 
-	databaseConnectTimeout, err := parseDuration("DATABASE_CONNECT_TIMEOUT")
+	connectTimeout, err := parseDuration("DATABASE_CONNECT_TIMEOUT")
 	if err != nil {
 		return DatabaseConfig{}, err
 	}
 
 	return DatabaseConfig{
-		URL:                    os.Getenv("DATABASE_URL"),
-		MaxOpenConns:           maxOpenConns,
-		MaxIdleConns:           maxIdleConns,
-		ConnMaxIdleTime:        connMaxIdleTime,
-		ConnMaxLifetime:        connMaxLifetime,
-		DatabaseConnectTimeout: databaseConnectTimeout,
+		URL:             os.Getenv("DATABASE_URL"),
+		MaxOpenConns:    maxOpenConns,
+		MaxIdleConns:    maxIdleConns,
+		ConnMaxIdleTime: connMaxIdleTime,
+		ConnMaxLifetime: connMaxLifetime,
+		ConnectTimeout:  connectTimeout,
 	}, nil
 }
 
@@ -79,7 +79,7 @@ func (c *DatabaseConfig) validate() error {
 		return errors.New("invalid configuration: DATABASE_CONN_MAX_LIFETIME must be greater than 0")
 	}
 
-	if c.DatabaseConnectTimeout <= 0 {
+	if c.ConnectTimeout <= 0 {
 		return errors.New("invalid configuration: DATABASE_CONNECT_TIMEOUT must be greater than 0")
 	}
 

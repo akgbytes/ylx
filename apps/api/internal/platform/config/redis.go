@@ -8,19 +8,19 @@ import (
 )
 
 type RedisConfig struct {
-	URL                 string
-	RedisConnectTimeout time.Duration
+	URL            string
+	ConnectTimeout time.Duration
 }
 
 func loadRedisConfig() (RedisConfig, error) {
-	redisConnectTimeout, err := parseDuration("REDIS_CONNECT_TIMEOUT")
+	connectTimeout, err := parseDuration("REDIS_CONNECT_TIMEOUT")
 	if err != nil {
 		return RedisConfig{}, err
 	}
 
 	return RedisConfig{
-		URL:                 os.Getenv("REDIS_URL"),
-		RedisConnectTimeout: redisConnectTimeout,
+		URL:            os.Getenv("REDIS_URL"),
+		ConnectTimeout: connectTimeout,
 	}, nil
 }
 
@@ -29,7 +29,7 @@ func (c *RedisConfig) validate() error {
 		return errors.New("invalid configuration: REDIS_URL is required")
 	}
 
-	if c.RedisConnectTimeout <= 0 {
+	if c.ConnectTimeout <= 0 {
 		return errors.New("invalid configuration: REDIS_CONNECT_TIMEOUT must be greater than 0")
 	}
 
