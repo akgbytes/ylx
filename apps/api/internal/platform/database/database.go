@@ -6,8 +6,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/akgbytes/ylx/internal/platform/config"
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/akgbytes/ylx/internal/platform/config"
 )
 
 func Connect(ctx context.Context, cfg config.DatabaseConfig) (*sql.DB, error) {

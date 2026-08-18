@@ -8,13 +8,14 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/akgbytes/ylx/internal/platform/config"
-	"github.com/akgbytes/ylx/internal/platform/logger"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/rs/zerolog"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+
+	"github.com/akgbytes/ylx/internal/platform/config"
+	"github.com/akgbytes/ylx/internal/platform/logger"
 )
 
 const (

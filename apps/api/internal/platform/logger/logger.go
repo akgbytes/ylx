@@ -6,8 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/akgbytes/ylx/internal/platform/config"
 	"github.com/rs/zerolog"
+
+	"github.com/akgbytes/ylx/internal/platform/config"
 )
 
 const timeFormat = "2006-01-02 15:04:05"

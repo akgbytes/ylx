@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/rs/zerolog"
+
 	"github.com/akgbytes/ylx/internal/platform/config"
 	"github.com/akgbytes/ylx/internal/platform/database"
 	"github.com/akgbytes/ylx/internal/platform/health"
 	"github.com/akgbytes/ylx/internal/platform/middleware"
 	"github.com/akgbytes/ylx/internal/platform/redis"
-
-	"github.com/rs/zerolog"
 )
 
 type Application struct {

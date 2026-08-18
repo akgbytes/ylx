@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/akgbytes/ylx/internal/platform/config"
 	goredis "github.com/redis/go-redis/v9"
+
+	"github.com/akgbytes/ylx/internal/platform/config"
 )
 
 func NewClient(ctx context.Context, cfg config.RedisConfig) (*goredis.Client, error) {

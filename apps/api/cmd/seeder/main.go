@@ -11,10 +11,11 @@ import (
 	"sort"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/akgbytes/ylx/internal/platform/config"
 	"github.com/akgbytes/ylx/internal/platform/database"
 	"github.com/akgbytes/ylx/internal/platform/logger"
-	"github.com/rs/zerolog"
 )
 
 const seedOperationTimeout = 30 * time.Second
