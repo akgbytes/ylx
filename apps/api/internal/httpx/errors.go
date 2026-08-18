@@ -8,12 +8,12 @@ import (
 )
 
 type ErrorMeta struct {
-	RetryAfterSeconds *int64     `json:"retry_after_seconds,omitempty"`
-	RetryAfterAt      *time.Time `json:"retry_after_at,omitempty"`
-	Limit             *int       `json:"limit,omitempty"`
-	Remaining         *int       `json:"remaining,omitempty"`
-	ResetAt           *time.Time `json:"reset_at,omitempty"`
-	Field             *string    `json:"field,omitempty"`
+	RetryAfter *int64     `json:"retry_after_seconds,omitempty"`
+	RetryAt    *time.Time `json:"retry_after_at,omitempty"`
+	Limit      *int       `json:"limit,omitempty"`
+	Remaining  *int       `json:"remaining,omitempty"`
+	ResetAt    *time.Time `json:"reset_at,omitempty"`
+	Field      *string    `json:"field,omitempty"`
 }
 
 type APIError struct {
@@ -33,8 +33,8 @@ func WriteCooldownError(w http.ResponseWriter, code ErrorCode, message string, r
 		Code:    code,
 		Message: message,
 		Meta: &ErrorMeta{
-			RetryAfterSeconds: &secs,
-			RetryAfterAt:      &retryAt,
+			RetryAfter: &secs,
+			RetryAt:    &retryAt,
 		},
 	})
 }

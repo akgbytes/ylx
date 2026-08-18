@@ -1,9 +1,13 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Listing struct {
-	ID          string
+	ID          uuid.UUID
 	Title       string
 	Description string
 	Price       int64

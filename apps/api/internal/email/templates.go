@@ -13,7 +13,6 @@ const (
 	brandTagline = "The Marketplace for Developers"
 )
 
-// EmailTemplate contains both versions of a transactional email.
 type EmailTemplate struct {
 	Subject string
 	Text    string
@@ -22,7 +21,6 @@ type EmailTemplate struct {
 
 type emailContent struct {
 	preheader   string
-	eyebrow     string
 	heading     string
 	intro       string
 	action      string
@@ -30,8 +28,6 @@ type emailContent struct {
 }
 
 // SignUpOTPTemplate creates the verification email sent during sign-up.
-//
-//nolint:lll // Transactional email markup needs inline CSS for broad client support.
 func SignUpOTPTemplate(otp string) EmailTemplate {
 	escapedOTP := html.EscapeString(otp)
 
@@ -46,12 +42,10 @@ Enter this code to finish creating your account. Do not share it with anyone.
 If you did not create a YLX account, you can safely ignore this email.`, otp),
 		HTML: renderEmail(emailContent{
 			preheader: "Use your verification code to finish creating your YLX account.",
-			eyebrow:   "WELCOME TO YLX",
 			heading:   "Verify your email",
 			intro:     "Enter this code to finish creating your developer marketplace account.",
 			action: fmt.Sprintf(`
-          <div style="margin:28px 0; padding:20px 16px; background:#F4F7FB; border:1px solid #E3E8EF; border-radius:12px; text-align:center;">
-            <p style="margin:0 0 8px; color:#667085; font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;">Your verification code</p>
+          <div style="margin:28px 0; padding:22px 16px; background:#F4F7FB; border:1px solid #E3E8EF; border-radius:12px; text-align:center;">
             <p style="margin:0; color:%s; font-family:'Courier New', Courier, monospace; font-size:34px; font-weight:700; letter-spacing:8px; line-height:1.2;">%s</p>
           </div>`, brandInk, escapedOTP),
 			securityTip: "This code expires shortly. Never share it with anyone, including someone claiming to work for YLX.",
@@ -59,9 +53,6 @@ If you did not create a YLX account, you can safely ignore this email.`, otp),
 	}
 }
 
-// PasswordResetTemplate creates the email for a password reset link.
-//
-//nolint:lll // Transactional email markup needs inline CSS for broad client support.
 func PasswordResetTemplate(link string) EmailTemplate {
 	escapedLink := html.EscapeString(link)
 
@@ -74,7 +65,6 @@ Reset your password using this link: %s
 If you did not request a password reset, you can safely ignore this email. Your password will not change.`, link),
 		HTML: renderEmail(emailContent{
 			preheader: "Reset your YLX password securely.",
-			eyebrow:   "YLX ACCOUNT SECURITY",
 			heading:   "Reset your password",
 			intro:     "We received a request to reset your password. Use the secure link below to choose a new one.",
 			action: fmt.Sprintf(`
@@ -91,7 +81,6 @@ If you did not request a password reset, you can safely ignore this email. Your 
 	}
 }
 
-//nolint:lll // Transactional email markup needs inline CSS for broad client support.
 func renderEmail(content emailContent) string {
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
@@ -124,7 +113,6 @@ func renderEmail(content emailContent) string {
           </tr>
           <tr>
             <td style="padding:36px 32px 32px;">
-              <p style="margin:0 0 10px; color:%s; font-size:11px; font-weight:700; letter-spacing:1.3px; line-height:16px;">%s</p>
               <h1 style="margin:0 0 14px; color:%s; font-size:26px; font-weight:750; letter-spacing:-0.5px; line-height:34px;">%s</h1>
               <p style="margin:0; color:#475467; font-size:15px; line-height:24px;">%s</p>
               %s
@@ -155,8 +143,6 @@ func renderEmail(content emailContent) string {
 		brandBlue,
 		brandLogoContentID,
 		brandTagline,
-		brandBlue,
-		html.EscapeString(content.eyebrow),
 		brandInk,
 		html.EscapeString(content.heading),
 		html.EscapeString(content.intro),

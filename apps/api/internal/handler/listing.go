@@ -28,6 +28,8 @@ func (h *ListingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	p.normalize()
+
 	if field, err := p.validate(); err != nil {
 		httpx.WriteValidationError(w, field, err.Error())
 		return
@@ -60,7 +62,7 @@ func (h *ListingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Info().Str("listing_id", listing.ID).Msg("listing created")
-	httpx.WriteJSON(w, http.StatusCreated, listing, nil)
+	httpx.WriteJSON(w, http.StatusCreated, listing)
 }
 
 func (h *ListingHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +112,7 @@ func (h *ListingHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, listings, nil)
+	httpx.WriteJSON(w, http.StatusOK, listings)
 }
 
 func (h *ListingHandler) Delete(w http.ResponseWriter, r *http.Request) {

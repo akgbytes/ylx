@@ -12,7 +12,8 @@ type AuthConfig struct {
 	RefreshTokenName           string
 	AccessTokenExpiry          time.Duration
 	RefreshTokenExpiry         time.Duration
-	OTPLength                  int
+	JWTSecretKey               string
+	OTPSecretKey               string
 	OTPMaxSends                int
 	OTPMaxVerificationAttempts int
 	OTPExpiry                  time.Duration
@@ -21,11 +22,6 @@ type AuthConfig struct {
 }
 
 func loadAuthConfig() (AuthConfig, error) {
-	otpLength, err := parseInt("OTP_LENGTH")
-	if err != nil {
-		return AuthConfig{}, err
-	}
-
 	otpMaxSends, err := parseInt("OTP_MAX_SENDS")
 	if err != nil {
 		return AuthConfig{}, err
@@ -66,7 +62,8 @@ func loadAuthConfig() (AuthConfig, error) {
 		RefreshTokenName:           os.Getenv("REFRESH_TOKEN_NAME"),
 		AccessTokenExpiry:          accessTokenExpiry,
 		RefreshTokenExpiry:         refreshTokenExpiry,
-		OTPLength:                  otpLength,
+		JWTSecretKey:               os.Getenv("JWT_SECRET_KEY"),
+		OTPSecretKey:               os.Getenv("OTP_SECRET_KEY"),
 		OTPMaxSends:                otpMaxSends,
 		OTPMaxVerificationAttempts: otpMaxVerificationAttempts,
 		OTPExpiry:                  otpExpiry,
@@ -75,12 +72,19 @@ func loadAuthConfig() (AuthConfig, error) {
 	}, nil
 }
 
+func (c *AuthConfig) normalize() {
+	c.AccessTokenName = strings.TrimSpace(c.AccessTokenName)
+	c.RefreshTokenName = strings.TrimSpace(c.RefreshTokenName)
+	c.JWTSecretKey = strings.TrimSpace(c.JWTSecretKey)
+	c.OTPSecretKey = strings.TrimSpace(c.OTPSecretKey)
+}
+
 func (c *AuthConfig) validate() error {
-	if c.AccessTokenName = strings.TrimSpace(c.AccessTokenName); c.AccessTokenName == "" {
+	if c.AccessTokenName == "" {
 		return errors.New("invalid configuration: ACCESS_TOKEN_NAME is required")
 	}
 
-	if c.RefreshTokenName = strings.TrimSpace(c.RefreshTokenName); c.RefreshTokenName == "" {
+	if c.RefreshTokenName == "" {
 		return errors.New("invalid configuration: REFRESH_TOKEN_NAME is required")
 	}
 
@@ -96,8 +100,12 @@ func (c *AuthConfig) validate() error {
 		return errors.New("invalid configuration: REFRESH_TOKEN_EXPIRY must be greater than 0")
 	}
 
-	if c.OTPLength <= 0 {
-		return errors.New("invalid configuration: OTP_LENGTH must be greater than 0")
+	if len(c.JWTSecretKey) < 32 {
+		return errors.New("invalid configuration: JWT_SECRET_KEY must be at least 32 characters")
+	}
+
+	if c.OTPSecretKey == "" {
+		return errors.New("invalid configuration: OTP_SECRET_KEY is required")
 	}
 
 	if c.OTPMaxSends <= 0 {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog"
 
 	"github.com/akgbytes/ylx/internal/config"
@@ -16,19 +17,19 @@ import (
 
 type Application struct {
 	logger zerolog.Logger
-	config *config.Config
+	cfg    *config.Config
 }
 
-func NewApplication(config *config.Config, logger zerolog.Logger) *Application {
+func NewApplication(cfg *config.Config, logger zerolog.Logger) *Application {
 	return &Application{
 		logger: logger,
-		config: config,
+		cfg:    cfg,
 	}
 }
 
 func (app *Application) Run() error {
-	dbCtx, dbCancel := context.WithTimeout(context.Background(), app.config.Database.DatabaseConnectTimeout)
-	db, err := database.Connect(dbCtx, app.config.Database)
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), app.cfg.Database.DatabaseConnectTimeout)
+	db, err := database.Connect(dbCtx, app.cfg.Database)
 	dbCancel()
 
 	if err != nil {
@@ -43,32 +44,41 @@ func (app *Application) Run() error {
 
 	app.logger.Info().Msg("database connected")
 
-	redisCtx, redisCancel := context.WithTimeout(context.Background(), app.config.Redis.RedisConnectTimeout)
-	redisClient, err := redis.NewClient(redisCtx, app.config.Redis)
-	redisCancel()
+	rdbCtx, rdbCancel := context.WithTimeout(context.Background(), app.cfg.Redis.RedisConnectTimeout)
+	rdb, err := redis.NewClient(rdbCtx, app.cfg.Redis)
+	rdbCancel()
 
 	if err != nil {
 		return fmt.Errorf("connect redis: %w", err)
 	}
 
 	defer func() {
-		if err := redisClient.Close(); err != nil {
+		if err := rdb.Close(); err != nil {
 			app.logger.Err(err).Msg("close redis")
 		}
 	}()
 
 	app.logger.Info().Msg("redis connected")
 
-	handler := router.NewRouter(db)
-	handler = middleware.RequestID(app.logger)(handler)
+	asynqClient := asynq.NewClientFromRedisClient(rdb)
+
+	defer func() {
+		if err := asynqClient.Close(); err != nil {
+			app.logger.Error().Err(err).Msg("close Asynq client")
+		}
+	}()
+
+	middlewares := middleware.NewMiddlewares(app.logger, &app.cfg.Auth, app.cfg.Server.Env == "prod")
+	handler := router.NewRouter(app.cfg, db, rdb, asynqClient, middlewares)
+	handler = middlewares.RequestID(handler)
 
 	httpServer := http.Server{
-		Addr:              app.config.Server.Addr,
+		Addr:              app.cfg.Server.Addr,
 		Handler:           handler,
-		ReadTimeout:       app.config.Server.ReadTimeout,
-		ReadHeaderTimeout: app.config.Server.ReadHeaderTimeout,
-		WriteTimeout:      app.config.Server.WriteTimeout,
-		IdleTimeout:       app.config.Server.IdleTimeout,
+		ReadTimeout:       app.cfg.Server.ReadTimeout,
+		ReadHeaderTimeout: app.cfg.Server.ReadHeaderTimeout,
+		WriteTimeout:      app.cfg.Server.WriteTimeout,
+		IdleTimeout:       app.cfg.Server.IdleTimeout,
 	}
 
 	app.logger.Info().Str("addr", httpServer.Addr).Msg("server listening")

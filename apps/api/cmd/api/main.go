@@ -14,14 +14,14 @@ func main() {
 		bootstrapLogger.Fatal().Err(err).Msg("bootstrap application")
 	}
 
-	logger, err := logger.New(&cfg.Log)
+	log, err := logger.New(&cfg.Log)
 	if err != nil {
 		bootstrapLogger.Fatal().Err(err).Msg("bootstrap application")
 	}
 
-	application := app.NewApplication(cfg, logger)
+	application := app.NewApplication(cfg, log)
 
 	if err := application.Run(); err != nil {
-		logger.Fatal().Err(err).Msg("server exited")
+		log.Fatal().Err(err).Msg("server exited")
 	}
 }

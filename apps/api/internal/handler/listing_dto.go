@@ -23,16 +23,22 @@ type listingResponse struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+func (p *createListingPayload) normalize() {
+	p.Title = strings.TrimSpace(p.Title)
+	p.Description = strings.TrimSpace(p.Description)
+	p.City = strings.TrimSpace(p.City)
+}
+
 func (p *createListingPayload) validate() (string, error) {
-	if strings.TrimSpace(p.Title) == "" {
+	if p.Title == "" {
 		return "title", errors.New("title is required")
 	}
 
-	if strings.TrimSpace(p.Description) == "" {
+	if p.Description == "" {
 		return "description", errors.New("description is required")
 	}
 
-	if strings.TrimSpace(p.City) == "" {
+	if p.City == "" {
 		return "city", errors.New("city is required")
 	}
 

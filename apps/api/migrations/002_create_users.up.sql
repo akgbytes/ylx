@@ -1,7 +1,7 @@
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
-  email TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   refresh_token_hash TEXT,
   refresh_token_expires_at TIMESTAMPTZ,
@@ -17,6 +17,3 @@ CREATE TRIGGER users_updated_at
 BEFORE UPDATE ON users
 FOR EACH ROW
 EXECUTE FUNCTION public.set_updated_at();
-
-CREATE UNIQUE INDEX idx_users_email
-  ON users(email);

@@ -31,7 +31,7 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	if err := decoder.Decode(dst); err != nil {
 		var typeErr *json.UnmarshalTypeError
 		if errors.As(err, &typeErr) {
-			WriteValidationError(w, typeErr.Field, "invalid field error")
+			WriteValidationError(w, typeErr.Field, "field has an invalid type")
 			return false
 		}
 
