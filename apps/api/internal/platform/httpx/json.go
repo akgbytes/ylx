@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -18,35 +19,71 @@ type APIResponse struct {
 	Meta *Meta `json:"meta,omitempty"`
 }
 
-func WriteJSON(w http.ResponseWriter, status int, data any, meta *Meta) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-
-	_ = json.NewEncoder(w).Encode(APIResponse{
-		Data: data,
-		Meta: meta,
-	})
-}
-
-func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
-	decoder := json.NewDecoder(r.Body)
+func DecodeJSON(body io.Reader, dst any) error {
+	decoder := json.NewDecoder(body)
 
 	if err := decoder.Decode(dst); err != nil {
-		var typeErr *json.UnmarshalTypeError
-		if errors.As(err, &typeErr) {
-			WriteValidationError(w, typeErr.Field, "invalid field error")
-			return false
+		if errors.Is(err, io.EOF) {
+			return &DecodeError{Kind: DecodeEmptyBody, Err: err}
 		}
 
-		WriteError(w, CodeMalformedJSON, "invalid request body")
-		return false
+		var typeErr *json.UnmarshalTypeError
+		if errors.As(err, &typeErr) {
+			return &DecodeError{
+				Kind:  DecodeTypeMismatch,
+				Field: typeErr.Field,
+				Err:   err,
+			}
+		}
+
+		return &DecodeError{Kind: DecodeMalformedJSON, Err: err}
 	}
 
 	var extra any
-	if err := decoder.Decode(&extra); err != io.EOF {
-		WriteError(w, CodeMalformedJSON, "invalid request body")
-		return false
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return &DecodeError{Kind: DecodeTrailingData, Err: err}
 	}
 
-	return true
+	return nil
+}
+
+func WriteNoContent(w http.ResponseWriter) error {
+	w.Header().Del("Content-Type")
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func WriteJSON(w http.ResponseWriter, status int, data any, meta *Meta) error {
+	body, err := encode(APIResponse{
+		Data: data,
+		Meta: meta,
+	})
+	if err != nil {
+		return err
+	}
+
+	return writeResponse(w, status, body)
+}
+
+func encode(value any) ([]byte, error) {
+	var body bytes.Buffer
+	if err := json.NewEncoder(&body).Encode(value); err != nil {
+		return nil, err
+	}
+
+	return body.Bytes(), nil
+}
+
+func writeResponse(w http.ResponseWriter, status int, body []byte) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	n, err := w.Write(body)
+	if err != nil {
+		return err
+	}
+	if n != len(body) {
+		return io.ErrShortWrite
+	}
+
+	return nil
 }

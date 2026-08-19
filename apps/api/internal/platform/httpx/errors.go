@@ -1,7 +1,7 @@
 package httpx
 
 import (
-	"encoding/json"
+	"errors"
 	"net/http"
 )
 
@@ -17,50 +17,40 @@ type ErrorResponse struct {
 	Error APIError `json:"error"`
 }
 
-func WriteError(w http.ResponseWriter, code ErrorCode, message string) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(statusFor(code))
-
-	_ = json.NewEncoder(w).Encode(ErrorResponse{
+func WriteError(w http.ResponseWriter, code ErrorCode, message string) error {
+	body, err := encode(ErrorResponse{
 		Error: APIError{
 			Code:    code,
 			Message: message,
 		},
 	})
+	if err != nil {
+		return err
+	}
+
+	return writeResponse(w, statusFor(code), body)
 }
 
-func WriteValidationError(w http.ResponseWriter, field, message string) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(statusFor(CodeValidation))
-
-	_ = json.NewEncoder(w).Encode(ErrorResponse{
+func WriteValidationError(w http.ResponseWriter, field, message string) error {
+	body, err := encode(ErrorResponse{
 		Error: APIError{
 			Code:    CodeValidation,
 			Message: message,
 			Field:   field,
 		},
 	})
+	if err != nil {
+		return err
+	}
+
+	return writeResponse(w, statusFor(CodeValidation), body)
 }
 
-func statusFor(code ErrorCode) int {
-	switch code {
-	case CodeBadRequest, CodeMalformedJSON, CodeValidation:
-		return http.StatusBadRequest
-	case CodeUnauthorized:
-		return http.StatusUnauthorized
-	case CodeForbidden:
-		return http.StatusForbidden
-	case CodeNotFound:
-		return http.StatusNotFound
-	case CodeConflict:
-		return http.StatusConflict
-	case CodeUnprocessable:
-		return http.StatusUnprocessableEntity
-	case CodeUnsupportedMedia:
-		return http.StatusUnsupportedMediaType
-	case CodeInternal:
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
+func WriteDecodeError(w http.ResponseWriter, err error) error {
+	var decodeErr *DecodeError
+	if !errors.As(err, &decodeErr) || decodeErr.Kind != DecodeTypeMismatch {
+		return WriteError(w, CodeMalformedJSON, "invalid request body")
 	}
+
+	return WriteValidationError(w, decodeErr.Field, "invalid field type")
 }
