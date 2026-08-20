@@ -10,6 +10,7 @@ require (
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/resend/resend-go/v3 v3.16.0
 	github.com/rs/zerolog v1.35.1
+	golang.org/x/crypto v0.45.0
 )
 
 require (
