@@ -2,8 +2,7 @@ package domain
 
 import (
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 type User struct {

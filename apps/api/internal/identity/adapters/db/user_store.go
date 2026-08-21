@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/akgbytes/ylx/internal/identity/domain"
@@ -39,12 +39,12 @@ func (s *UserStore) EmailTaken(ctx context.Context, email string) (bool, error) 
 
 func (s *UserStore) Create(ctx context.Context, user domain.User) (domain.User, error) {
 	query := `
-		INSERT INTO users (name, email, password_hash)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (id, name, email, password_hash)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, name, email, password_hash, created_at, updated_at
 	`
 
-	created, err := scanUser(s.db.QueryRowContext(ctx, query, user.Name, user.Email, user.PasswordHash))
+	created, err := scanUser(s.db.QueryRowContext(ctx, query, user.ID, user.Name, user.Email, user.PasswordHash))
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {

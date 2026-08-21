@@ -66,7 +66,7 @@ func (app *Application) Run() error {
 
 	httpServer := http.Server{
 		Addr:              app.cfg.Server.Addr,
-		Handler:           newHandler(app.logger),
+		Handler:           newHandler(app.cfg, app.logger, db, rdb),
 		ReadTimeout:       app.cfg.Server.ReadTimeout,
 		ReadHeaderTimeout: app.cfg.Server.ReadHeaderTimeout,
 		WriteTimeout:      app.cfg.Server.WriteTimeout,
