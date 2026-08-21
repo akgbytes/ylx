@@ -98,7 +98,6 @@ linters:
 
 issues:
   max-same-issues: 50
-
 formatters:
   enable:
     - gofmt
@@ -112,7 +111,8 @@ formatters:
 
     gofumpt:
       module-path: github.com/akgbytes/ylx
-      extra-rules: true
+      extra:
+        group-params: true
 
     goimports:
       local-prefixes:

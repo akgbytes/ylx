@@ -3,87 +3,38 @@ package httpx
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
 )
 
-type Meta struct {
-	Page       int `json:"page"`
-	Limit      int `json:"limit"`
-	TotalPages int `json:"total_pages"`
-}
-
 type APIResponse struct {
-	Data any   `json:"data"`
-	Meta *Meta `json:"meta,omitempty"`
+	Data any `json:"data"`
 }
 
-func DecodeJSON(body io.Reader, dst any) error {
-	decoder := json.NewDecoder(body)
-
-	if err := decoder.Decode(dst); err != nil {
-		if errors.Is(err, io.EOF) {
-			return &DecodeError{Kind: DecodeEmptyBody, Err: err}
-		}
-
-		var typeErr *json.UnmarshalTypeError
-		if errors.As(err, &typeErr) {
-			return &DecodeError{
-				Kind:  DecodeTypeMismatch,
-				Field: typeErr.Field,
-				Err:   err,
-			}
-		}
-
-		return &DecodeError{Kind: DecodeMalformedJSON, Err: err}
-	}
-
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return &DecodeError{Kind: DecodeTrailingData, Err: err}
-	}
-
-	return nil
-}
-
-func WriteNoContent(w http.ResponseWriter) error {
+func WriteNoContent(w http.ResponseWriter) {
 	w.Header().Del("Content-Type")
 	w.WriteHeader(http.StatusNoContent)
-	return nil
 }
 
-func WriteJSON(w http.ResponseWriter, status int, data any, meta *Meta) error {
-	body, err := encode(APIResponse{
+func WriteJSON(w http.ResponseWriter, status int, data any) {
+	body := encode(APIResponse{
 		Data: data,
-		Meta: meta,
 	})
-	if err != nil {
-		return err
-	}
 
-	return writeResponse(w, status, body)
+	writeResponse(w, status, body)
 }
 
-func encode(value any) ([]byte, error) {
+func encode(value any) []byte {
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(value); err != nil {
-		return nil, err
+		// TODO: Should I log error or return it? Abhi chor deta hu :)
+		return nil
 	}
-
-	return body.Bytes(), nil
+	return body.Bytes()
 }
 
-func writeResponse(w http.ResponseWriter, status int, body []byte) error {
+func writeResponse(w http.ResponseWriter, status int, body []byte) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	n, err := w.Write(body)
-	if err != nil {
-		return err
-	}
-	if n != len(body) {
-		return io.ErrShortWrite
-	}
-
-	return nil
+	// TODO: Same error doubt here
+	_, _ = w.Write(body)
 }

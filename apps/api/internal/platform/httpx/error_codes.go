@@ -13,6 +13,7 @@ const (
 	CodeUnprocessable    ErrorCode = "unprocessable_content"
 	CodeUnsupportedMedia ErrorCode = "unsupported_media_type"
 	CodeInternal         ErrorCode = "internal_error"
+	CodeTooManyRequests  ErrorCode = "too_many_requests"
 )
 
 func statusFor(code ErrorCode) int {
@@ -33,6 +34,8 @@ func statusFor(code ErrorCode) int {
 		return http.StatusUnsupportedMediaType
 	case CodeInternal:
 		return http.StatusInternalServerError
+	case CodeTooManyRequests:
+		return http.StatusTooManyRequests
 	default:
 		return http.StatusInternalServerError
 	}
