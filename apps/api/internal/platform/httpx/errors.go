@@ -69,6 +69,7 @@ func WriteDecodeError(w http.ResponseWriter, err error) {
 	var decodeErr *DecodeError
 	if !errors.As(err, &decodeErr) || decodeErr.Kind != DecodeTypeMismatch {
 		WriteError(w, CodeMalformedJSON, "invalid request body")
+		return
 	}
 	WriteValidationError(w, decodeErr.Field, "invalid field type")
 }

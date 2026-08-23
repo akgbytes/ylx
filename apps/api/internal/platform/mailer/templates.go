@@ -1,9 +1,8 @@
-package mail
+package mailer
 
 import (
 	"fmt"
 	"html"
-	"time"
 )
 
 const (
@@ -14,10 +13,9 @@ const (
 	brandTagline = "The Marketplace for Developers"
 )
 
-func RenderSignupEmail(
+func SignupEmailTemplate(
 	otp string,
 	recipientName string,
-	otpExpiry time.Duration,
 ) string {
 	return fmt.Sprintf(`<!doctype html>
 <html lang="en">
@@ -193,7 +191,7 @@ func RenderSignupEmail(
                   "
                 >
                   This code will expire in
-                  <strong>%d minutes.</strong>
+                  <strong>10 minutes.</strong>
                 </p>
 
                 <!-- Security message -->
@@ -274,7 +272,6 @@ func RenderSignupEmail(
 		html.EscapeString(recipientName), // recipient
 		BrandInk,                         // OTP color
 		html.EscapeString(otp),           // OTP
-		int(otpExpiry.Minutes()),         // expiry
 		BrandBorder,                      // footer border
 		brandTagline,                     // footer tagline
 	)

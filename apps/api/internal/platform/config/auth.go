@@ -72,12 +72,19 @@ func loadAuthConfig() (AuthConfig, error) {
 	}, nil
 }
 
+func (c *AuthConfig) normalize() {
+	c.AccessTokenName = strings.TrimSpace(c.AccessTokenName)
+	c.RefreshTokenName = strings.TrimSpace(c.RefreshTokenName)
+	c.JWTSecretKey = strings.TrimSpace(c.JWTSecretKey)
+	c.OTPSecretKey = strings.TrimSpace(c.OTPSecretKey)
+}
+
 func (c *AuthConfig) validate() error {
-	if c.AccessTokenName = strings.TrimSpace(c.AccessTokenName); c.AccessTokenName == "" {
+	if c.AccessTokenName == "" {
 		return errors.New("invalid configuration: ACCESS_TOKEN_NAME is required")
 	}
 
-	if c.RefreshTokenName = strings.TrimSpace(c.RefreshTokenName); c.RefreshTokenName == "" {
+	if c.RefreshTokenName == "" {
 		return errors.New("invalid configuration: REFRESH_TOKEN_NAME is required")
 	}
 

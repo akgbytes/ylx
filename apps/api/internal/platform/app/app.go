@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog"
 
 	"github.com/akgbytes/ylx/internal/platform/config"
@@ -64,9 +65,11 @@ func (app *Application) Run() error {
 
 	app.logger.Info().Msg("redis connected")
 
+	asynqClient := asynq.NewClientFromRedisClient(rdb)
+
 	httpServer := http.Server{
 		Addr:              app.cfg.Server.Addr,
-		Handler:           newHandler(app.cfg, app.logger, db, rdb),
+		Handler:           newHandler(app.cfg, app.logger, db, rdb, asynqClient),
 		ReadTimeout:       app.cfg.Server.ReadTimeout,
 		ReadHeaderTimeout: app.cfg.Server.ReadHeaderTimeout,
 		WriteTimeout:      app.cfg.Server.WriteTimeout,

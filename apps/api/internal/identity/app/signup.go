@@ -42,12 +42,13 @@ func (s *Service) StartSignup(ctx context.Context, in SignupInput) (SignupOutput
 	}
 
 	otpHash := crypto.HashOTP(otp, s.cfg.OTPSecretKey)
+	emailHash := crypto.HashEmail(in.Email)
+	expiresAt := time.Now().Add(s.cfg.OTPExpiry)
 
-	// Reserve OTP Challenge in Redis
 	reservation, err := s.challenges.Reserve(ctx, otpstore.Challenge{
 		Name:         in.Name,
 		Email:        in.Email,
-		EmailHash:    crypto.HashEmail(in.Email),
+		EmailHash:    emailHash,
 		PasswordHash: passwordHash,
 		OTPHash:      otpHash,
 	})
@@ -58,11 +59,21 @@ func (s *Service) StartSignup(ctx context.Context, in SignupInput) (SignupOutput
 		return SignupOutput{}, reservationError(reservation)
 	}
 
-	// TODO: Send otp through email and handle err state
+	if err := s.dispatcher.DispatchSignupOTP(ctx, SignupOTP{
+		Recipient: in.Name,
+		Email:     in.Email,
+		EmailHash: emailHash,
+		OTP:       otp,
+		OTPHash:   otpHash,
+		ExpiresAt: expiresAt,
+	}); err != nil {
+		if releaseErr := s.challenges.Release(ctx, emailHash); releaseErr != nil {
+			return SignupOutput{}, errors.Join(err, releaseErr)
+		}
+		return SignupOutput{}, err
+	}
 
-	return SignupOutput{
-		RetryAt: reservation.RetryAt,
-	}, nil
+	return SignupOutput{RetryAt: reservation.RetryAt}, nil
 }
 
 func reservationError(r otpstore.Reservation) error {

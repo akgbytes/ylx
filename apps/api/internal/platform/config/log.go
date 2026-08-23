@@ -18,8 +18,13 @@ func loadLogConfig() LogConfig {
 	}
 }
 
+func (c *LogConfig) normalize() {
+	c.Level = strings.TrimSpace(c.Level)
+	c.Format = strings.TrimSpace(c.Format)
+}
+
 func (c *LogConfig) validate() error {
-	if c.Level = strings.TrimSpace(c.Level); c.Level == "" {
+	if c.Level == "" {
 		return errors.New("invalid configuration: LOG_LEVEL is required")
 	}
 
@@ -29,7 +34,7 @@ func (c *LogConfig) validate() error {
 		)
 	}
 
-	if c.Format = strings.TrimSpace(c.Format); c.Format == "" {
+	if c.Format == "" {
 		return errors.New("invalid configuration: LOG_FORMAT is required")
 	}
 

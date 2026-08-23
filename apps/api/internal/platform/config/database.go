@@ -52,8 +52,12 @@ func loadDatabaseConfig() (DatabaseConfig, error) {
 	}, nil
 }
 
+func (c *DatabaseConfig) normalize() {
+	c.URL = strings.TrimSpace(c.URL)
+}
+
 func (c *DatabaseConfig) validate() error {
-	if c.URL = strings.TrimSpace(c.URL); c.URL == "" {
+	if c.URL == "" {
 		return errors.New("invalid configuration: DATABASE_URL is required")
 	}
 

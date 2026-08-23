@@ -54,21 +54,22 @@ func loadServerConfig() (ServerConfig, error) {
 	}, nil
 }
 
+func (c *ServerConfig) normalize() {
+	c.Addr = strings.TrimSpace(c.Addr)
+	c.Env = strings.TrimSpace(c.Env)
+}
+
 func (c *ServerConfig) validate() error {
-	if c.Addr = strings.TrimSpace(c.Addr); c.Addr == "" {
+	if c.Addr == "" {
 		return errors.New("invalid configuration: ADDR is required")
 	}
 
-	if c.Env = strings.TrimSpace(c.Env); c.Env == "" {
+	if c.Env == "" {
 		return errors.New("invalid configuration: ENV is required")
 	}
 
 	if c.Env != "dev" && c.Env != "prod" {
 		return errors.New("invalid configuration: ENV must be 'dev' or 'prod'")
-	}
-
-	if c.ReadHeaderTimeout <= 0 {
-		return errors.New("invalid configuration: READ_HEADER_TIMEOUT must be greater than 0")
 	}
 
 	if c.ReadTimeout <= 0 {
@@ -81,6 +82,10 @@ func (c *ServerConfig) validate() error {
 
 	if c.IdleTimeout <= 0 {
 		return errors.New("invalid configuration: IDLE_TIMEOUT must be greater than 0")
+	}
+
+	if c.ReadHeaderTimeout <= 0 {
+		return errors.New("invalid configuration: READ_HEADER_TIMEOUT must be greater than 0")
 	}
 
 	if c.ShutdownTimeout <= 0 {

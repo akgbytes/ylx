@@ -24,8 +24,12 @@ func loadRedisConfig() (RedisConfig, error) {
 	}, nil
 }
 
+func (c *RedisConfig) normalize() {
+	c.URL = strings.TrimSpace(c.URL)
+}
+
 func (c *RedisConfig) validate() error {
-	if c.URL = strings.TrimSpace(c.URL); c.URL == "" {
+	if c.URL == "" {
 		return errors.New("invalid configuration: REDIS_URL is required")
 	}
 
