@@ -43,7 +43,6 @@ func (s *Service) StartSignup(ctx context.Context, in SignupInput) (SignupOutput
 
 	otpHash := crypto.HashOTP(otp, s.cfg.OTPSecretKey)
 	emailHash := crypto.HashEmail(in.Email)
-	expiresAt := time.Now().Add(s.cfg.OTPExpiry)
 
 	reservation, err := s.challenges.Reserve(ctx, otpstore.Challenge{
 		Name:         in.Name,
@@ -65,15 +64,50 @@ func (s *Service) StartSignup(ctx context.Context, in SignupInput) (SignupOutput
 		EmailHash: emailHash,
 		OTP:       otp,
 		OTPHash:   otpHash,
-		ExpiresAt: expiresAt,
+		ExpiresAt: reservation.ExpiresAt,
 	}); err != nil {
-		if releaseErr := s.challenges.Release(ctx, emailHash); releaseErr != nil {
+		if releaseErr := s.challenges.Release(ctx, emailHash, otpHash); releaseErr != nil {
 			return SignupOutput{}, errors.Join(err, releaseErr)
 		}
 		return SignupOutput{}, err
 	}
 
 	return SignupOutput{RetryAt: reservation.RetryAt}, nil
+}
+
+func (s *Service) ResendSignup(ctx context.Context, email string) (SignupOutput, error) {
+	emailHash := crypto.HashEmail(email)
+
+	otp, err := crypto.GenerateOTP()
+	if err != nil {
+		return SignupOutput{}, fmt.Errorf("generate otp: %w", err)
+	}
+
+	otpHash := crypto.HashOTP(otp, s.cfg.OTPSecretKey)
+
+	resend, err := s.challenges.Resend(ctx, emailHash, otpHash)
+	if err != nil {
+		return SignupOutput{}, err
+	}
+	if !resend.Reservation.Allowed {
+		return SignupOutput{}, reservationError(resend.Reservation)
+	}
+
+	if err := s.dispatcher.DispatchSignupOTP(ctx, SignupOTP{
+		Recipient: resend.Recipient,
+		Email:     resend.Email,
+		EmailHash: emailHash,
+		OTP:       otp,
+		OTPHash:   otpHash,
+		ExpiresAt: resend.Reservation.ExpiresAt,
+	}); err != nil {
+		if releaseErr := s.challenges.Release(ctx, emailHash, otpHash); releaseErr != nil {
+			return SignupOutput{}, errors.Join(err, releaseErr)
+		}
+		return SignupOutput{}, err
+	}
+
+	return SignupOutput{RetryAt: resend.Reservation.RetryAt}, nil
 }
 
 func reservationError(r otpstore.Reservation) error {
@@ -86,6 +120,8 @@ func reservationError(r otpstore.Reservation) error {
 		return domain.ErrChallengeExpired
 	case otpstore.ReasonChallengeMismatch:
 		return domain.ErrChallengeMismatch
+	case otpstore.ReasonInvalidAttempts, otpstore.ReasonInvalidCooldown:
+		return fmt.Errorf("identity: invalid reservation state: %s", r.Reason)
 	default:
 		return errors.New("identity: unexpected reservation state: " + r.Reason)
 	}

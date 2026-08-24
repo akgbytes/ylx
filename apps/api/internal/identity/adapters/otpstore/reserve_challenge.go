@@ -18,15 +18,23 @@ type Challenge struct {
 }
 
 type Reservation struct {
-	Allowed bool
-	Reason  string
-	RetryAt time.Time
+	Allowed   bool
+	Reason    string
+	RetryAt   time.Time
+	ExpiresAt time.Time
+}
+
+type ResendResult struct {
+	Reservation Reservation
+	Recipient   string
+	Email       string
 }
 
 type reservationResponse struct {
-	Allowed bool   `json:"allowed"`
-	Reason  string `json:"reason"`
-	RetryAt int64  `json:"retry_at"`
+	Allowed   bool   `json:"allowed"`
+	Reason    string `json:"reason"`
+	RetryAt   int64  `json:"retry_at"`
+	ExpiresAt int64  `json:"expires_at"`
 }
 
 const (
@@ -34,14 +42,17 @@ const (
 	ReasonSendLimitReached  = "send_limit_reached"
 	ReasonChallengeExpired  = "challenge_expired"
 	ReasonChallengeMismatch = "challenge_mismatch"
+	ReasonInvalidAttempts   = "invalid_attempts_state"
+	ReasonInvalidCooldown   = "invalid_cooldown_state"
 )
 
 const reserveScript = `
-local function response(allowed, reason, retryAtMs)
+local function response(allowed, reason, retryAtMs, expiresAtMs)
   return cjson.encode({
     allowed = allowed,
     reason = reason,
-    retry_at = retryAtMs
+    retry_at = retryAtMs,
+    expires_at = expiresAtMs or 0
   })
 end
 
@@ -85,7 +96,7 @@ if newAttempts == 1 then
   redis.call("PEXPIRE", KEYS[1], sendLimitWindowMs)
 end
 
-return response(true, "ok", nowMs + cooldownMs)
+return response(true, "ok", nowMs + cooldownMs, nowMs + challengeTTLms)
 `
 
 func (s *Store) Reserve(ctx context.Context, challenge Challenge) (Reservation, error) {
@@ -140,9 +151,14 @@ func decodeReservation(rawResponse any, operation string) (Reservation, error) {
 		return Reservation{}, fmt.Errorf("decode %s response: %w", operation, err)
 	}
 
-	return Reservation{
+	reservation := Reservation{
 		Allowed: response.Allowed,
 		Reason:  response.Reason,
 		RetryAt: time.UnixMilli(response.RetryAt),
-	}, nil
+	}
+	if response.ExpiresAt > 0 {
+		reservation.ExpiresAt = time.UnixMilli(response.ExpiresAt)
+	}
+
+	return reservation, nil
 }

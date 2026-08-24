@@ -39,7 +39,6 @@ func main() {
 
 func run(cfg *config.Config, log zerolog.Logger) error {
 	redisCtx, redisCancel := context.WithTimeout(context.Background(), cfg.Redis.ConnectTimeout)
-
 	rdb, err := redis.NewClient(redisCtx, cfg.Redis)
 	redisCancel()
 

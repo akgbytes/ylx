@@ -2,17 +2,21 @@ package otpstore
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
 const resendChallengeScript = `
-local function response(allowed, reason, retryAtMs)
+local function response(allowed, reason, retryAtMs, recipient, email)
   return cjson.encode({
     allowed = allowed,
     reason = reason,
-    retry_at = retryAtMs
+    retry_at = retryAtMs,
+    recipient = recipient or "",
+    email = email or ""
   })
 end
 
@@ -67,10 +71,10 @@ if newAttempts == 1 then
   redis.call("PEXPIRE", KEYS[1], sendLimitWindowMs)
 end
 
-return response(true, "ok", nowMs + cooldownMs)
+return response(true, "ok", nowMs + cooldownMs, challenge.name, challenge.email)
 `
 
-func (s *Store) Resend(ctx context.Context, emailHash, otpHash string) (Reservation, error) {
+func (s *Store) Resend(ctx context.Context, emailHash, otpHash string) (ResendResult, error) {
 	rawResponse, err := redis.NewScript(resendChallengeScript).Run(
 		ctx,
 		s.rdb,
@@ -88,8 +92,38 @@ func (s *Store) Resend(ctx context.Context, emailHash, otpHash string) (Reservat
 		otpHash,
 	).Result()
 	if err != nil {
-		return Reservation{}, fmt.Errorf("resend signup challenge: %w", err)
+		return ResendResult{}, fmt.Errorf("resend signup challenge: %w", err)
 	}
 
-	return decodeReservation(rawResponse, "resend signup challenge")
+	jsonResponse, ok := rawResponse.(string)
+	if !ok {
+		return ResendResult{}, fmt.Errorf("resend signup challenge: unexpected redis response type %T", rawResponse)
+	}
+
+	var response struct {
+		Allowed   bool   `json:"allowed"`
+		Reason    string `json:"reason"`
+		RetryAt   int64  `json:"retry_at"`
+		ExpiresAt int64  `json:"expires_at"`
+		Recipient string `json:"recipient"`
+		Email     string `json:"email"`
+	}
+	if err := json.Unmarshal([]byte(jsonResponse), &response); err != nil {
+		return ResendResult{}, fmt.Errorf("decode resend signup challenge response: %w", err)
+	}
+
+	reservation := Reservation{
+		Allowed: response.Allowed,
+		Reason:  response.Reason,
+		RetryAt: time.UnixMilli(response.RetryAt),
+	}
+	if response.ExpiresAt > 0 {
+		reservation.ExpiresAt = time.UnixMilli(response.ExpiresAt)
+	}
+
+	return ResendResult{
+		Reservation: reservation,
+		Recipient:   response.Recipient,
+		Email:       response.Email,
+	}, nil
 }

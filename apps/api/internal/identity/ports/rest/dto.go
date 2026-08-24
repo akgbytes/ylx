@@ -40,3 +40,18 @@ func (p *signupRequest) validate() (string, error) {
 type signupResponse struct {
 	RetryAt time.Time `json:"retry_at"`
 }
+
+type resendSignupRequest struct {
+	Email string `json:"email"`
+}
+
+func (p *resendSignupRequest) normalize() {
+	p.Email = strings.TrimSpace(strings.ToLower(p.Email))
+}
+func (p *resendSignupRequest) validate() (string, error) {
+	addr, err := mail.ParseAddress(p.Email)
+	if err != nil || addr.Address != p.Email {
+		return "email", errors.New("invalid email address")
+	}
+	return "", nil
+}

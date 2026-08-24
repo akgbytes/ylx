@@ -8,16 +8,16 @@ import (
 )
 
 func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
-	var payload signupRequest
+	var req signupRequest
 
-	if err := httpx.DecodeJSON(r.Body, &payload); err != nil {
+	if err := httpx.DecodeJSON(r.Body, &req); err != nil {
 		httpx.WriteDecodeError(w, err)
 		return
 	}
 
-	payload.normalize()
+	req.normalize()
 
-	if field, err := payload.validate(); err != nil {
+	if field, err := req.validate(); err != nil {
 		httpx.WriteValidationError(w, field, err.Error())
 		return
 	}
@@ -25,9 +25,9 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 	started, err := h.service.StartSignup(
 		r.Context(),
 		app.SignupInput{
-			Name:     payload.Name,
-			Email:    payload.Email,
-			Password: payload.Password,
+			Name:     req.Name,
+			Email:    req.Email,
+			Password: req.Password,
 		},
 	)
 	if err != nil {
@@ -39,7 +39,27 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ResendSignup(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, TempResponse{Message: "sending code again..."})
+	var req resendSignupRequest
+
+	if err := httpx.DecodeJSON(r.Body, &req); err != nil {
+		httpx.WriteDecodeError(w, err)
+		return
+	}
+
+	req.normalize()
+
+	if field, err := req.validate(); err != nil {
+		httpx.WriteValidationError(w, field, err.Error())
+		return
+	}
+
+	started, err := h.service.ResendSignup(r.Context(), req.Email)
+	if err != nil {
+		h.writeError(w, r, "resend signup otp", err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusAccepted, signupResponse{RetryAt: started.RetryAt})
 }
 
 func (h *Handler) VerifySignup(w http.ResponseWriter, r *http.Request) {
