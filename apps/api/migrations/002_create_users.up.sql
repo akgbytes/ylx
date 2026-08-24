@@ -3,13 +3,8 @@ CREATE TABLE users (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   password_hash TEXT NOT NULL,
-  refresh_token_hash TEXT,
-  refresh_token_expires_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT users_refresh_token_pair CHECK (
-    (refresh_token_hash IS NULL) = (refresh_token_expires_at IS NULL)
-  )
 );
 
 CREATE TRIGGER users_updated_at
