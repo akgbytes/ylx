@@ -2,9 +2,13 @@ package app
 
 import (
 	"context"
+	"crypto/hmac"
 	"errors"
 	"fmt"
 	"time"
+	"uuid"
+
+	"github.com/redis/go-redis/v9"
 
 	"github.com/akgbytes/ylx/internal/identity/adapters/crypto"
 	"github.com/akgbytes/ylx/internal/identity/adapters/otpstore"
@@ -110,6 +114,61 @@ func (s *Service) ResendSignup(ctx context.Context, email string) (SignupOutput,
 	return SignupOutput{RetryAt: resend.Reservation.RetryAt}, nil
 }
 
+func (s *Service) VerifySignup(
+	ctx context.Context,
+	email, otp string,
+) (domain.User, Tokens, error) {
+	emailHash := crypto.HashEmail(email)
+	challenge, err := s.challenges.Load(ctx, emailHash)
+	if errors.Is(err, redis.Nil) {
+		return domain.User{}, Tokens{}, domain.ErrChallengeExpired
+	}
+	if err != nil {
+		return domain.User{}, Tokens{}, err
+	}
+
+	providedHash := crypto.HashOTP(otp, s.cfg.OTPSecretKey)
+	if !hmac.Equal([]byte(challenge.OTPHash), []byte(providedHash)) {
+		return domain.User{}, Tokens{}, s.recordFailedAttempt(ctx, emailHash)
+	}
+
+	user := domain.User{
+		ID:           uuid.New(),
+		Name:         challenge.Name,
+		Email:        challenge.Email,
+		PasswordHash: challenge.PasswordHash,
+	}
+
+	created, err := s.users.Create(ctx, user)
+	if err != nil {
+		return domain.User{}, Tokens{}, err
+	}
+
+	if err := s.challenges.Clear(ctx, emailHash); err != nil {
+		return domain.User{}, Tokens{}, fmt.Errorf("clear signup challenge: %w", err)
+	}
+
+	now := time.Now()
+	accessExpiresAt := now.Add(s.cfg.AccessTokenExpiry)
+	refreshExpiresAt := now.Add(s.cfg.RefreshTokenExpiry)
+
+	accessToken, err := s.signer.SignAccess(user.ID.String(), now, accessExpiresAt)
+	if err != nil {
+		return domain.User{}, Tokens{}, err
+	}
+	refreshToken, err := s.signer.SignRefresh(user.ID.String(), now, refreshExpiresAt)
+	if err != nil {
+		return domain.User{}, Tokens{}, err
+	}
+
+	return created, Tokens{
+		AccessToken:           accessToken,
+		RefreshToken:          refreshToken,
+		AccessTokenExpiresAt:  accessExpiresAt,
+		RefreshTokenExpiresAt: refreshExpiresAt,
+	}, nil
+}
+
 func reservationError(r otpstore.Reservation) error {
 	switch r.Reason {
 	case otpstore.ReasonCooldownActive:
@@ -124,5 +183,23 @@ func reservationError(r otpstore.Reservation) error {
 		return fmt.Errorf("identity: invalid reservation state: %s", r.Reason)
 	default:
 		return errors.New("identity: unexpected reservation state: " + r.Reason)
+	}
+}
+
+func (s *Service) recordFailedAttempt(ctx context.Context, emailHash string) error {
+	result, err := s.challenges.RecordFailedAttempt(ctx, emailHash)
+	if err != nil {
+		return err
+	}
+
+	switch result {
+	case otpstore.AttemptExpired:
+		return domain.ErrChallengeExpired
+	case otpstore.AttemptRecorded:
+		return domain.ErrOTPInvalid
+	case otpstore.AttemptLimitReached:
+		return domain.ErrTooManyAttempts
+	default:
+		return fmt.Errorf("identity: unexpected verification result: %d", result)
 	}
 }

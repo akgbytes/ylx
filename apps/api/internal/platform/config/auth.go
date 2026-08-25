@@ -12,7 +12,8 @@ type AuthConfig struct {
 	RefreshTokenName           string
 	AccessTokenExpiry          time.Duration
 	RefreshTokenExpiry         time.Duration
-	JWTSecretKey               string
+	AccessTokenSecret          string
+	RefreshTokenSecret         string
 	OTPSecretKey               string
 	OTPMaxSends                int
 	OTPMaxVerificationAttempts int
@@ -62,7 +63,8 @@ func loadAuthConfig() (AuthConfig, error) {
 		RefreshTokenName:           os.Getenv("REFRESH_TOKEN_NAME"),
 		AccessTokenExpiry:          accessTokenExpiry,
 		RefreshTokenExpiry:         refreshTokenExpiry,
-		JWTSecretKey:               os.Getenv("JWT_SECRET_KEY"),
+		AccessTokenSecret:          os.Getenv("ACCESS_TOKEN_SECRET"),
+		RefreshTokenSecret:         os.Getenv("REFRESH_TOKEN_SECRET"),
 		OTPSecretKey:               os.Getenv("OTP_SECRET_KEY"),
 		OTPMaxSends:                otpMaxSends,
 		OTPMaxVerificationAttempts: otpMaxVerificationAttempts,
@@ -75,7 +77,8 @@ func loadAuthConfig() (AuthConfig, error) {
 func (c *AuthConfig) normalize() {
 	c.AccessTokenName = strings.TrimSpace(c.AccessTokenName)
 	c.RefreshTokenName = strings.TrimSpace(c.RefreshTokenName)
-	c.JWTSecretKey = strings.TrimSpace(c.JWTSecretKey)
+	c.AccessTokenSecret = strings.TrimSpace(c.AccessTokenSecret)
+	c.RefreshTokenSecret = strings.TrimSpace(c.RefreshTokenSecret)
 	c.OTPSecretKey = strings.TrimSpace(c.OTPSecretKey)
 }
 
@@ -100,8 +103,12 @@ func (c *AuthConfig) validate() error {
 		return errors.New("invalid configuration: REFRESH_TOKEN_EXPIRY must be greater than 0")
 	}
 
-	if len(c.JWTSecretKey) < 32 {
-		return errors.New("invalid configuration: JWT_SECRET_KEY must be at least 32 characters")
+	if len(c.AccessTokenSecret) < 32 {
+		return errors.New("invalid configuration: ACCESS_TOKEN_SECRET must be at least 32 characters")
+	}
+
+	if len(c.RefreshTokenSecret) < 32 {
+		return errors.New("invalid configuration: REFRESH_TOKEN_SECRET must be at least 32 characters")
 	}
 
 	if c.OTPSecretKey == "" {

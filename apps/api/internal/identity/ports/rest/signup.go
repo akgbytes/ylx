@@ -63,5 +63,26 @@ func (h *Handler) ResendSignup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) VerifySignup(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, TempResponse{Message: "verifying email..."})
+	var req verifySignupPayload
+
+	if err := httpx.DecodeJSON(r.Body, &req); err != nil {
+		httpx.WriteDecodeError(w, err)
+		return
+	}
+
+	req.normalize()
+
+	if field, err := req.validate(); err != nil {
+		httpx.WriteValidationError(w, field, err.Error())
+		return
+	}
+
+	user, tokens, err := h.service.VerifySignup(r.Context(), req.Email, req.OTP)
+	if err != nil {
+		h.writeError(w, r, "verify signup", err)
+		return
+	}
+
+	h.cookies.Set(w, tokens)
+	httpx.WriteJSON(w, http.StatusCreated, newUserResponse(user))
 }

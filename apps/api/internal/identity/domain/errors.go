@@ -11,6 +11,8 @@ var (
 	ErrUserNotFound       = errors.New("identity: user not found")
 	ErrChallengeExpired   = errors.New("identity: verification code has expired")
 	ErrChallengeMismatch  = errors.New("identity: verification code is invalid")
+	ErrOTPInvalid         = errors.New("identity: verification code is invalid")
+	ErrTooManyAttempts    = errors.New("identity: too many invalid verification attempts")
 )
 
 type CooldownError struct {

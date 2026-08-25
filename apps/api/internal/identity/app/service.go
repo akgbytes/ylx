@@ -6,16 +6,10 @@ import (
 	"uuid"
 
 	"github.com/akgbytes/ylx/internal/identity/adapters/otpstore"
+	"github.com/akgbytes/ylx/internal/identity/adapters/token"
 	"github.com/akgbytes/ylx/internal/identity/domain"
 	"github.com/akgbytes/ylx/internal/platform/config"
 )
-
-type Service struct {
-	users      UserStore
-	cfg        config.AuthConfig
-	challenges *otpstore.Store
-	dispatcher OTPDispatcher
-}
 
 type UserStore interface {
 	EmailTaken(ctx context.Context, email string) (bool, error)
@@ -37,11 +31,20 @@ type OTPDispatcher interface {
 	DispatchSignupOTP(ctx context.Context, payload SignupOTP) error
 }
 
+type Service struct {
+	users      UserStore
+	cfg        config.AuthConfig
+	challenges *otpstore.Store
+	dispatcher OTPDispatcher
+	signer     *token.Signer
+}
+
 type Deps struct {
 	Users      UserStore
 	Config     config.AuthConfig
 	Challenges *otpstore.Store
 	Dispatcher OTPDispatcher
+	Signer     *token.Signer
 }
 
 func NewService(deps Deps) *Service {
@@ -50,5 +53,6 @@ func NewService(deps Deps) *Service {
 		cfg:        deps.Config,
 		challenges: deps.Challenges,
 		dispatcher: deps.Dispatcher,
+		signer:     deps.Signer,
 	}
 }

@@ -6,17 +6,25 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/akgbytes/ylx/internal/identity/adapters/token"
 	"github.com/akgbytes/ylx/internal/identity/app"
 	"github.com/akgbytes/ylx/internal/identity/domain"
+	"github.com/akgbytes/ylx/internal/platform/config"
 	"github.com/akgbytes/ylx/internal/platform/httpx"
 )
 
 type Handler struct {
 	service *app.Service
+	signer  *token.Signer
+	cookies *Cookies
 }
 
-func NewHandler(service *app.Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *app.Service, signer *token.Signer, cfg *config.AuthConfig, secure bool) *Handler {
+	return &Handler{
+		service: service,
+		signer:  signer,
+		cookies: NewCookies(cfg, secure),
+	}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
@@ -57,8 +65,13 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, operation s
 	case errors.Is(err, domain.ErrInvalidCredentials):
 		httpx.WriteError(w, httpx.CodeUnauthorized, "invalid email or password")
 
-	case errors.Is(err, domain.ErrChallengeExpired), errors.Is(err, domain.ErrChallengeMismatch):
+	case errors.Is(err, domain.ErrChallengeExpired),
+		errors.Is(err, domain.ErrChallengeMismatch),
+		errors.Is(err, domain.ErrOTPInvalid):
 		httpx.WriteError(w, httpx.CodeBadRequest, "invalid verification code")
+
+	case errors.Is(err, domain.ErrTooManyAttempts):
+		httpx.WriteError(w, httpx.CodeTooManyRequests, "too many invalid verification attempts")
 
 	default:
 		logger.Err(err).Msg(operation)

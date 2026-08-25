@@ -5,6 +5,8 @@ import (
 	"net/mail"
 	"strings"
 	"time"
+
+	"github.com/akgbytes/ylx/internal/identity/domain"
 )
 
 type signupRequest struct {
@@ -48,10 +50,50 @@ type resendSignupRequest struct {
 func (p *resendSignupRequest) normalize() {
 	p.Email = strings.TrimSpace(strings.ToLower(p.Email))
 }
+
 func (p *resendSignupRequest) validate() (string, error) {
 	addr, err := mail.ParseAddress(p.Email)
 	if err != nil || addr.Address != p.Email {
 		return "email", errors.New("invalid email address")
 	}
 	return "", nil
+}
+
+type verifySignupPayload struct {
+	Email string `json:"email"`
+	OTP   string `json:"otp"`
+}
+
+func (p *verifySignupPayload) normalize() {
+	p.Email = strings.TrimSpace(strings.ToLower(p.Email))
+	p.OTP = strings.TrimSpace(p.OTP)
+}
+
+func (p *verifySignupPayload) validate() (string, error) {
+	addr, err := mail.ParseAddress(p.Email)
+	if err != nil || addr.Address != p.Email {
+		return "email", errors.New("invalid email address")
+	}
+
+	if p.OTP == "" {
+		return "otp", errors.New("verification code is required")
+	}
+
+	return "", nil
+}
+
+type userResponse struct {
+	ID        string     `json:"id"`
+	Name      string     `json:"name"`
+	Email     string     `json:"email"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+}
+
+func newUserResponse(user domain.User) userResponse {
+	return userResponse{
+		ID:        user.ID.String(),
+		Name:      user.Name,
+		Email:     user.Email,
+		CreatedAt: &user.CreatedAt,
+	}
 }

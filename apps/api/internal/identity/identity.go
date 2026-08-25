@@ -11,6 +11,7 @@ import (
 	"github.com/akgbytes/ylx/internal/identity/adapters/db"
 	"github.com/akgbytes/ylx/internal/identity/adapters/otpstore"
 	"github.com/akgbytes/ylx/internal/identity/adapters/task"
+	"github.com/akgbytes/ylx/internal/identity/adapters/token"
 	"github.com/akgbytes/ylx/internal/identity/app"
 	"github.com/akgbytes/ylx/internal/identity/ports/rest"
 	"github.com/akgbytes/ylx/internal/platform/config"
@@ -29,17 +30,23 @@ type Deps struct {
 }
 
 func New(deps Deps) *Module {
+	signer := token.NewSigner(deps.Config.Auth.AccessTokenSecret, deps.Config.Auth.RefreshTokenSecret)
 	service := app.NewService(
 		app.Deps{
 			Users:      db.NewUserStore(deps.DB),
 			Config:     deps.Config.Auth,
 			Challenges: otpstore.NewStore(deps.Redis, deps.Config.Auth),
 			Dispatcher: task.NewDispatcher(deps.AsynqClient),
+			Signer:     signer,
 		},
 	)
 
 	return &Module{
-		handler: rest.NewHandler(service),
+		handler: rest.NewHandler(
+			service,
+			signer,
+			&deps.Config.Auth,
+			deps.Config.Server.Env == "prod"),
 	}
 }
 
