@@ -1,10 +1,13 @@
 package rest
 
 import (
+	"errors"
 	"net/http"
+	"uuid"
 
 	"github.com/rs/zerolog"
 
+	"github.com/akgbytes/ylx/internal/identity/domain"
 	"github.com/akgbytes/ylx/internal/platform/httpx"
 )
 
@@ -59,7 +62,13 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, err := h.service.Refresh(r.Context(), claims.UserID)
+	parsed, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		h.writeError(w, r, "refresh session", err)
+		return
+	}
+
+	tokens, err := h.service.Refresh(r.Context(), parsed)
 	if err != nil {
 		h.writeError(w, r, "refresh session", err)
 		return
@@ -67,4 +76,31 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	h.cookies.Set(w, tokens)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	userID, ok := UserIDFrom(r.Context())
+	if !ok {
+		httpx.WriteError(w, httpx.CodeUnauthorized, "authentication required")
+		return
+	}
+
+	parsed, err := uuid.Parse(userID)
+	if err != nil {
+		h.writeError(w, r, "", err)
+		return
+	}
+
+	user, err := h.service.Me(r.Context(), parsed)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			h.cookies.Clear(w)
+			httpx.WriteError(w, httpx.CodeUnauthorized, "authentication required")
+			return
+		}
+		h.writeError(w, r, "fetch user profile", err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, newUserResponse(user))
 }

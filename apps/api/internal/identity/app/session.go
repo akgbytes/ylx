@@ -53,13 +53,8 @@ func (s *Service) SignIn(ctx context.Context, email, password string) (domain.Us
 	}, nil
 }
 
-func (s *Service) Refresh(ctx context.Context, userID string) (Tokens, error) {
-	parsedUserID, err := uuid.Parse(userID)
-	if err != nil {
-		return Tokens{}, fmt.Errorf("parse user id: %w", err)
-	}
-
-	if _, err := s.users.ByID(ctx, parsedUserID); err != nil {
+func (s *Service) Refresh(ctx context.Context, userID uuid.UUID) (Tokens, error) {
+	if _, err := s.users.ByID(ctx, userID); err != nil {
 		return Tokens{}, err
 	}
 
@@ -67,12 +62,12 @@ func (s *Service) Refresh(ctx context.Context, userID string) (Tokens, error) {
 	accessExpiresAt := now.Add(s.cfg.AccessTokenExpiry)
 	refreshExpiresAt := now.Add(s.cfg.RefreshTokenExpiry)
 
-	accessToken, err := s.signer.SignAccess(userID, now, accessExpiresAt)
+	accessToken, err := s.signer.SignAccess(userID.String(), now, accessExpiresAt)
 	if err != nil {
 		return Tokens{}, err
 	}
 
-	refreshToken, err := s.signer.SignRefresh(userID, now, refreshExpiresAt)
+	refreshToken, err := s.signer.SignRefresh(userID.String(), now, refreshExpiresAt)
 	if err != nil {
 		return Tokens{}, err
 	}
@@ -83,4 +78,8 @@ func (s *Service) Refresh(ctx context.Context, userID string) (Tokens, error) {
 		AccessTokenExpiresAt:  accessExpiresAt,
 		RefreshTokenExpiresAt: refreshExpiresAt,
 	}, nil
+}
+
+func (s *Service) Me(ctx context.Context, userID uuid.UUID) (domain.User, error) {
+	return s.users.ByID(ctx, userID)
 }

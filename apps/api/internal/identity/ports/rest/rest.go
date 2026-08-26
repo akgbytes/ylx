@@ -35,6 +35,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/signin", h.Signin)
 	mux.HandleFunc("POST /auth/logout", h.Logout)
 	mux.HandleFunc("POST /auth/refresh", h.Refresh)
+	mux.Handle("GET /auth/me", h.RequireAuth(http.HandlerFunc(h.Me)))
 }
 
 func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, operation string, err error) {
