@@ -111,6 +111,10 @@ func (c *AuthConfig) validate() error {
 		return errors.New("invalid configuration: REFRESH_TOKEN_SECRET must be at least 32 characters")
 	}
 
+	if c.AccessTokenSecret == c.RefreshTokenSecret {
+		return errors.New("invalid configuration: ACCESS_TOKEN_SECRET and REFRESH_TOKEN_SECRET must differ")
+	}
+
 	if c.OTPSecretKey == "" {
 		return errors.New("invalid configuration: OTP_SECRET_KEY is required")
 	}

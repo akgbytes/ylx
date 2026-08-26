@@ -56,11 +56,11 @@ func (s *Signer) VerifyAccess(accessToken string) (Claims, error) {
 		jwt.WithIssuedAt(),
 	)
 	if err != nil {
-		return Claims{}, fmt.Errorf("parse refresh token: %w", err)
+		return Claims{}, fmt.Errorf("parse access token: %w", err)
 	}
 
 	if !parsed.Valid {
-		return Claims{}, errors.New("refresh token is invalid")
+		return Claims{}, errors.New("access token is invalid")
 	}
 
 	if _, err := uuid.Parse(claims.Subject); err != nil {
@@ -99,11 +99,11 @@ func (s *Signer) VerifyRefresh(refreshToken string) (Claims, error) {
 		jwt.WithIssuedAt(),
 	)
 	if err != nil {
-		return Claims{}, fmt.Errorf("parse access token: %w", err)
+		return Claims{}, fmt.Errorf("parse refresh token: %w", err)
 	}
 
 	if !parsed.Valid {
-		return Claims{}, errors.New("access token is invalid")
+		return Claims{}, errors.New("refresh token is invalid")
 	}
 
 	if _, err := uuid.Parse(claims.Subject); err != nil {

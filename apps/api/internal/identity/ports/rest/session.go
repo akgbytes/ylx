@@ -45,5 +45,26 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, TempResponse{Message: "refreshing tokens..."})
+	refreshToken := h.cookies.RefreshToken(r)
+	if refreshToken == "" {
+		h.cookies.Clear(w)
+		httpx.WriteError(w, httpx.CodeUnauthorized, "invalid or expired session")
+		return
+	}
+
+	claims, err := h.signer.VerifyRefresh(refreshToken)
+	if err != nil {
+		h.cookies.Clear(w)
+		httpx.WriteError(w, httpx.CodeUnauthorized, "invalid or expired session")
+		return
+	}
+
+	tokens, err := h.service.Refresh(r.Context(), claims.UserID)
+	if err != nil {
+		h.writeError(w, r, "refresh session", err)
+		return
+	}
+
+	h.cookies.Set(w, tokens)
+	w.WriteHeader(http.StatusNoContent)
 }
