@@ -40,7 +40,8 @@ func (h *Handler) Signin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, TempResponse{Message: "logging out..."})
+	h.cookies.Clear(w)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
