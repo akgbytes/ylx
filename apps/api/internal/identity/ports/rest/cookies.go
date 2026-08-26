@@ -46,6 +46,7 @@ func (c *Cookies) Clear(w http.ResponseWriter) {
 	c.write(w, c.refreshName, "", expired, -1)
 }
 
+//nolint:gosec // Secure is enabled in prod and configurable for development.
 func (c *Cookies) write(w http.ResponseWriter, name, value string, expires time.Time, maxAge int) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,

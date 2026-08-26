@@ -144,10 +144,6 @@ func (s *Service) VerifySignup(
 		return domain.User{}, Tokens{}, err
 	}
 
-	if err := s.challenges.Clear(ctx, emailHash); err != nil {
-		return domain.User{}, Tokens{}, fmt.Errorf("clear signup challenge: %w", err)
-	}
-
 	now := time.Now()
 	accessExpiresAt := now.Add(s.cfg.AccessTokenExpiry)
 	refreshExpiresAt := now.Add(s.cfg.RefreshTokenExpiry)
@@ -159,6 +155,10 @@ func (s *Service) VerifySignup(
 	refreshToken, err := s.signer.SignRefresh(user.ID.String(), now, refreshExpiresAt)
 	if err != nil {
 		return domain.User{}, Tokens{}, err
+	}
+
+	if err := s.challenges.Clear(ctx, emailHash); err != nil {
+		return domain.User{}, Tokens{}, fmt.Errorf("clear signup challenge: %w", err)
 	}
 
 	return created, Tokens{

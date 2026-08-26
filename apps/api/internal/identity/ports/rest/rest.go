@@ -62,7 +62,7 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, operation s
 	case errors.Is(err, domain.ErrEmailTaken):
 		httpx.WriteError(w, httpx.CodeConflict, "email is already in use")
 
-	case errors.Is(err, domain.ErrInvalidCredentials):
+	case errors.Is(err, domain.ErrUserNotFound), errors.Is(err, domain.ErrInvalidCredentials):
 		httpx.WriteError(w, httpx.CodeUnauthorized, "invalid email or password")
 
 	case errors.Is(err, domain.ErrChallengeExpired),

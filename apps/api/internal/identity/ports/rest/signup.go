@@ -63,7 +63,7 @@ func (h *Handler) ResendSignup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) VerifySignup(w http.ResponseWriter, r *http.Request) {
-	var req verifySignupPayload
+	var req verifySignupRequest
 
 	if err := httpx.DecodeJSON(r.Body, &req); err != nil {
 		httpx.WriteDecodeError(w, err)

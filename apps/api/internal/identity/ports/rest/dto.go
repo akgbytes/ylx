@@ -59,17 +59,17 @@ func (p *resendSignupRequest) validate() (string, error) {
 	return "", nil
 }
 
-type verifySignupPayload struct {
+type verifySignupRequest struct {
 	Email string `json:"email"`
 	OTP   string `json:"otp"`
 }
 
-func (p *verifySignupPayload) normalize() {
+func (p *verifySignupRequest) normalize() {
 	p.Email = strings.TrimSpace(strings.ToLower(p.Email))
 	p.OTP = strings.TrimSpace(p.OTP)
 }
 
-func (p *verifySignupPayload) validate() (string, error) {
+func (p *verifySignupRequest) validate() (string, error) {
 	addr, err := mail.ParseAddress(p.Email)
 	if err != nil || addr.Address != p.Email {
 		return "email", errors.New("invalid email address")
@@ -96,4 +96,26 @@ func newUserResponse(user domain.User) userResponse {
 		Email:     user.Email,
 		CreatedAt: &user.CreatedAt,
 	}
+}
+
+type signinRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (p *signinRequest) normalize() {
+	p.Email = strings.TrimSpace(strings.ToLower(p.Email))
+}
+
+func (p *signinRequest) validate() (string, error) {
+	addr, err := mail.ParseAddress(p.Email)
+	if err != nil || addr.Address != p.Email {
+		return "email", errors.New("invalid email address")
+	}
+
+	if p.Password == "" {
+		return "password", errors.New("password is required")
+	}
+
+	return "", nil
 }
