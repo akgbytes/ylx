@@ -28,5 +28,9 @@ func newHandler(cfg *config.Config, logger zerolog.Logger, db *sql.DB, rdb *redi
 
 	identityModule.RegisterRoutes(mux)
 
-	return middleware.RequestID(logger)(mux)
+	return middleware.Chain(
+		mux,
+		middleware.RequestID(logger),
+		middleware.CORS(cfg.Server.CORSAllowedOrigin),
+	)
 }

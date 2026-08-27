@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 type ServerConfig struct {
 	Addr              string
 	Env               string
+	CORSAllowedOrigin string
 	ReadHeaderTimeout time.Duration
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
@@ -46,6 +48,7 @@ func loadServerConfig() (ServerConfig, error) {
 	return ServerConfig{
 		Addr:              os.Getenv("ADDR"),
 		Env:               os.Getenv("ENV"),
+		CORSAllowedOrigin: os.Getenv("CORS_ALLOWED_ORIGIN"),
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
@@ -57,6 +60,7 @@ func loadServerConfig() (ServerConfig, error) {
 func (c *ServerConfig) normalize() {
 	c.Addr = strings.TrimSpace(c.Addr)
 	c.Env = strings.TrimSpace(c.Env)
+	c.CORSAllowedOrigin = strings.TrimRight(strings.TrimSpace(c.CORSAllowedOrigin), "/")
 }
 
 func (c *ServerConfig) validate() error {
@@ -70,6 +74,21 @@ func (c *ServerConfig) validate() error {
 
 	if c.Env != "dev" && c.Env != "prod" {
 		return errors.New("invalid configuration: ENV must be 'dev' or 'prod'")
+	}
+
+	if c.CORSAllowedOrigin == "" {
+		return errors.New("invalid configuration: CORS_ALLOWED_ORIGIN is required")
+	}
+
+	parsedOrigin, err := url.Parse(c.CORSAllowedOrigin)
+	if err != nil ||
+		(parsedOrigin.Scheme != "http" && parsedOrigin.Scheme != "https") ||
+		parsedOrigin.Host == "" ||
+		parsedOrigin.User != nil ||
+		parsedOrigin.Path != "" ||
+		parsedOrigin.RawQuery != "" ||
+		parsedOrigin.Fragment != "" {
+		return errors.New("invalid configuration: CORS_ALLOWED_ORIGIN must be an HTTP origin")
 	}
 
 	if c.ReadTimeout <= 0 {
