@@ -1,0 +1,14 @@
+@import "@ylx/ui/globals.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
