@@ -1,29 +1,17 @@
-import { Button } from "@ylx/ui/components/button";
+import Link from "next/link";
 import { IconArrowRight, IconMapPin } from "@ylx/ui/icons";
 import Image from "next/image";
+
+import { buttonVariants } from "@ylx/ui/components/button";
+
+import { HomeHeader } from "@/components/home/home-header";
 
 export default function Home() {
   return (
     <>
-      <header className="border-b bg-card/80 px-6 py-4 backdrop-blur sm:px-10">
-        <div className="mx-auto flex max-w-5xl items-center gap-3">
-          <Image
-            src="/brand/favicon-64.png"
-            alt=""
-            className="size-10"
-            width="40"
-            height="40"
-          />
-          <div>
-            <p className="font-heading text-xl font-bold leading-none">YLX</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              The Marketplace for Developers
-            </p>
-          </div>
-        </div>
-      </header>
+      <HomeHeader />
 
-      <main className="px-6 py-16 sm:px-10">
+      <main id="main-content" className="px-6 py-16 sm:px-10">
         <section className="mx-auto grid max-w-5xl gap-12 lg:grid-cols-[1fr_0.8fr] lg:items-center">
           <div className="space-y-6">
             <p className="text-sm font-semibold tracking-wide text-primary uppercase">
@@ -36,9 +24,9 @@ export default function Home() {
               Buy and sell laptops, components, peripherals, and homelab gear
               directly with other developers.
             </p>
-            <Button size="lg">
+            <Link href="/listings" className={buttonVariants({ size: "lg" })}>
               Explore gear <IconArrowRight aria-hidden="true" />
-            </Button>
+            </Link>
           </div>
 
           <article className="rounded-xl border bg-card p-5 text-card-foreground shadow-sm">

@@ -5,7 +5,10 @@ export default function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <main className="grid min-h-svh place-items-center bg-muted p-6">
+    <main
+      id="main-content"
+      className="grid min-h-svh place-items-center bg-muted p-6"
+    >
       <div className="flex w-full max-w-sm flex-col gap-6">
         <Link href="/" className="self-center text-xl font-semibold">
           <Image

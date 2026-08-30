@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -23,40 +23,59 @@ import {
 } from "@ylx/ui/components/field";
 import { Input } from "@ylx/ui/components/input";
 
-import { authQueryKeys, signIn } from "@/api/auth";
-import { ZSignInSchema, type SignInValues } from "@/lib/validation/auth";
+import { signUp } from "@/api/auth";
+import { ZSignUpSchema, type SignUpValues } from "@/lib/validation/auth";
 
-export function SignInForm() {
+export function SignUpForm() {
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const signInMutation = useMutation({
-    mutationFn: signIn,
-    onSuccess: (user) => {
-      queryClient.setQueryData(authQueryKeys.me(), user);
-      router.push("/");
+  const signUpMutation = useMutation({
+    mutationFn: signUp,
+    onSuccess: (challenge, values) => {
+      const params = new URLSearchParams({
+        email: values.email,
+        retryAt: challenge.retry_at,
+      });
+      router.push(`/verify-sign-up?${params.toString()}`);
     },
   });
-  const form = useForm<SignInValues>({
-    resolver: zodResolver(ZSignInSchema),
-    defaultValues: { email: "", password: "" },
+  const form = useForm<SignUpValues>({
+    resolver: zodResolver(ZSignUpSchema),
+    defaultValues: { name: "", email: "", password: "" },
   });
+
+  function submit(values: SignUpValues) {
+    signUpMutation.reset();
+    signUpMutation.mutate(values);
+  }
+
+  const nameError = form.formState.errors.name?.message;
   const emailError = form.formState.errors.email?.message;
   const passwordError = form.formState.errors.password?.message;
-
-  function submit(values: SignInValues) {
-    signInMutation.reset();
-    signInMutation.mutate(values);
-  }
 
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-xl">Welcome back</CardTitle>
-        <CardDescription>Sign in with your email and password</CardDescription>
+        <CardTitle className="text-xl">Create your account</CardTitle>
+        <CardDescription>
+          We will email you a code to verify your account
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(submit)} noValidate>
           <FieldGroup>
+            <Field data-invalid={!!nameError}>
+              <FieldLabel htmlFor="name">Name</FieldLabel>
+              <Input
+                {...form.register("name")}
+                id="name"
+                autoComplete="name"
+                placeholder="Your name"
+                aria-invalid={!!nameError}
+                required
+              />
+              {nameError && <FieldError>{nameError}</FieldError>}
+            </Field>
+
             <Field data-invalid={!!emailError}>
               <FieldLabel htmlFor="email">Email</FieldLabel>
               <Input
@@ -78,8 +97,8 @@ export function SignInForm() {
                 {...form.register("password")}
                 id="password"
                 type="password"
-                autoComplete="current-password"
-                placeholder="Enter your password"
+                autoComplete="new-password"
+                placeholder="At least 6 characters"
                 aria-invalid={!!passwordError}
                 required
               />
@@ -87,14 +106,14 @@ export function SignInForm() {
             </Field>
 
             <Field>
-              <Button type="submit" disabled={signInMutation.isPending}>
-                {signInMutation.isPending ? "Signing in…" : "Sign in"}
+              <Button type="submit" disabled={signUpMutation.isPending}>
+                {signUpMutation.isPending ? "Sending code…" : "Continue"}
               </Button>
-              {signInMutation.isError && (
-                <FieldError>{signInMutation.error.message}</FieldError>
+              {signUpMutation.isError && (
+                <FieldError>{signUpMutation.error.message}</FieldError>
               )}
               <FieldDescription className="text-center">
-                New to YLX? <Link href="/sign-up">Create an account</Link>
+                Already have an account? <Link href="/sign-in">Sign in</Link>
               </FieldDescription>
             </Field>
           </FieldGroup>
