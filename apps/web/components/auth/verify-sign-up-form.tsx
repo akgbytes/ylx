@@ -27,6 +27,11 @@ import { Input } from "@ylx/ui/components/input";
 import { authQueryKeys, resendSignUp, verifySignUp } from "@/api/auth";
 import { ApiError } from "@/lib/api-client";
 import {
+  authHref,
+  authRedirectTarget,
+  sanitizeAuthRedirect,
+} from "@/lib/auth-redirect";
+import {
   ZVerificationCodeSchema,
   type VerificationCodeValues,
 } from "@/lib/validation/auth";
@@ -36,27 +41,28 @@ export function VerifySignUpForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const email = searchParams.get("email") ?? "";
+  const redirectTo = sanitizeAuthRedirect(searchParams.get("redirect"));
   const [retryAt, setRetryAt] = useState(searchParams.get("retryAt"));
   const secondsRemaining = useCooldown(retryAt);
   const verifyMutation = useMutation({
     mutationFn: verifySignUp,
     onSuccess: (user) => {
       queryClient.setQueryData(authQueryKeys.me(), user);
-      router.replace("/");
+      router.replace(authRedirectTarget(redirectTo));
     },
   });
   const resendMutation = useMutation({
     mutationFn: resendSignUp,
     onSuccess: (challenge) => {
       setRetryAt(challenge.retry_at);
-      router.replace(verificationPath(email, challenge.retry_at));
+      router.replace(verificationPath(email, challenge.retry_at, redirectTo));
       form.reset();
     },
     onError: (error) => {
       const nextRetryAt = getRetryAt(error);
       if (nextRetryAt) {
         setRetryAt(nextRetryAt);
-        router.replace(verificationPath(email, nextRetryAt));
+        router.replace(verificationPath(email, nextRetryAt, redirectTo));
       }
     },
   });
@@ -76,7 +82,10 @@ export function VerifySignUpForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Link href="/sign-up" className={`${buttonVariants()} w-full`}>
+          <Link
+            href={authHref("/sign-up", redirectTo)}
+            className={`${buttonVariants()} w-full`}
+          >
             Start again
           </Link>
         </CardContent>
@@ -159,7 +168,8 @@ export function VerifySignUpForm() {
       </CardContent>
       <CardContent className="pt-0 text-center">
         <FieldDescription>
-          Wrong email? <Link href="/sign-up">Start again</Link>
+          Wrong email?{" "}
+          <Link href={authHref("/sign-up", redirectTo)}>Start again</Link>
         </FieldDescription>
       </CardContent>
     </Card>
@@ -185,8 +195,15 @@ function useCooldown(retryAt: string | null) {
   return Math.max(Math.ceil((retryTime - now) / 1_000), 0);
 }
 
-function verificationPath(email: string, retryAt: string) {
+function verificationPath(
+  email: string,
+  retryAt: string,
+  redirectTo: string | undefined
+) {
   const params = new URLSearchParams({ email, retryAt });
+  if (redirectTo) {
+    params.set("redirect", redirectTo);
+  }
   return `/verify-sign-up?${params.toString()}`;
 }
 

@@ -24,16 +24,19 @@ import {
 import { Input } from "@ylx/ui/components/input";
 
 import { authQueryKeys, signIn } from "@/api/auth";
+import { authHref, authRedirectTarget } from "@/lib/auth-redirect";
 import { ZSignInSchema, type SignInValues } from "@/lib/validation/auth";
+import { useAuthPageGuard } from "@/components/auth/use-auth-page-guard";
 
 export function SignInForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { isRedirecting, redirectTo } = useAuthPageGuard();
   const signInMutation = useMutation({
     mutationFn: signIn,
     onSuccess: (user) => {
       queryClient.setQueryData(authQueryKeys.me(), user);
-      router.push("/");
+      router.replace(authRedirectTarget(redirectTo));
     },
   });
   const form = useForm<SignInValues>({
@@ -47,6 +50,8 @@ export function SignInForm() {
     signInMutation.reset();
     signInMutation.mutate(values);
   }
+
+  if (isRedirecting) return null;
 
   return (
     <Card>
@@ -94,7 +99,10 @@ export function SignInForm() {
                 <FieldError>{signInMutation.error.message}</FieldError>
               )}
               <FieldDescription className="text-center">
-                New to YLX? <Link href="/sign-up">Create an account</Link>
+                New to YLX?{" "}
+                <Link href={authHref("/sign-up", redirectTo)}>
+                  Create an account
+                </Link>
               </FieldDescription>
             </Field>
           </FieldGroup>

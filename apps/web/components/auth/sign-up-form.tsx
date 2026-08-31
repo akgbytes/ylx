@@ -24,10 +24,13 @@ import {
 import { Input } from "@ylx/ui/components/input";
 
 import { signUp } from "@/api/auth";
+import { authHref } from "@/lib/auth-redirect";
 import { ZSignUpSchema, type SignUpValues } from "@/lib/validation/auth";
+import { useAuthPageGuard } from "@/components/auth/use-auth-page-guard";
 
 export function SignUpForm() {
   const router = useRouter();
+  const { isRedirecting, redirectTo } = useAuthPageGuard();
   const signUpMutation = useMutation({
     mutationFn: signUp,
     onSuccess: (challenge, values) => {
@@ -35,6 +38,9 @@ export function SignUpForm() {
         email: values.email,
         retryAt: challenge.retry_at,
       });
+      if (redirectTo) {
+        params.set("redirect", redirectTo);
+      }
       router.push(`/verify-sign-up?${params.toString()}`);
     },
   });
@@ -51,6 +57,8 @@ export function SignUpForm() {
   const nameError = form.formState.errors.name?.message;
   const emailError = form.formState.errors.email?.message;
   const passwordError = form.formState.errors.password?.message;
+
+  if (isRedirecting) return null;
 
   return (
     <Card>
@@ -113,7 +121,8 @@ export function SignUpForm() {
                 <FieldError>{signUpMutation.error.message}</FieldError>
               )}
               <FieldDescription className="text-center">
-                Already have an account? <Link href="/sign-in">Sign in</Link>
+                Already have an account?{" "}
+                <Link href={authHref("/sign-in", redirectTo)}>Sign in</Link>
               </FieldDescription>
             </Field>
           </FieldGroup>
