@@ -18,9 +18,10 @@ func NewStore(db *sql.DB) *Store {
 
 func (s *Store) List(ctx context.Context) ([]domain.Listing, error) {
 	query := `
-		SELECT id, seller_id, category_id, title, description, price, city, created_at, updated_at
-		FROM listings
-		ORDER BY created_at DESC, id DESC
+		SELECT l.id, l.seller_id, l.category_id, c.name, l.title, l.description, l.price, l.city, l.created_at, l.updated_at
+		FROM listings l
+		JOIN categories c ON c.id = l.category_id
+		ORDER BY l.created_at DESC, l.id DESC
 	`
 
 	rows, err := s.db.QueryContext(ctx, query)
@@ -57,6 +58,7 @@ func scanListing(row rowScanner) (domain.Listing, error) {
 		&listing.ID,
 		&listing.SellerID,
 		&listing.CategoryID,
+		&listing.CategoryName,
 		&listing.Title,
 		&listing.Description,
 		&listing.Price,
