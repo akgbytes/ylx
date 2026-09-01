@@ -5,6 +5,10 @@
       "env": ["GOCACHE"],
       "outputs": ["bin/**", "dist/**"]
     },
+    "web#build": {
+      "env": ["NEXT_PUBLIC_API_URL"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
     "clean": {
       "cache": false
     },
