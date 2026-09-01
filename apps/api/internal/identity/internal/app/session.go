@@ -6,8 +6,8 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/akgbytes/ylx/internal/identity/adapters/crypto"
-	"github.com/akgbytes/ylx/internal/identity/domain"
+	"github.com/akgbytes/ylx/internal/identity/internal/adapters/crypto"
+	"github.com/akgbytes/ylx/internal/identity/internal/domain"
 )
 
 type Tokens struct {

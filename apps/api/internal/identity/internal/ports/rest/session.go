@@ -7,7 +7,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/akgbytes/ylx/internal/identity/domain"
+	"github.com/akgbytes/ylx/internal/identity/internal/domain"
 	"github.com/akgbytes/ylx/internal/platform/httpx"
 )
 

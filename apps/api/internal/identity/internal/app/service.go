@@ -5,9 +5,9 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/akgbytes/ylx/internal/identity/adapters/otpstore"
-	"github.com/akgbytes/ylx/internal/identity/adapters/token"
-	"github.com/akgbytes/ylx/internal/identity/domain"
+	"github.com/akgbytes/ylx/internal/identity/internal/adapters/otpstore"
+	"github.com/akgbytes/ylx/internal/identity/internal/adapters/token"
+	"github.com/akgbytes/ylx/internal/identity/internal/domain"
 	"github.com/akgbytes/ylx/internal/platform/config"
 )
 

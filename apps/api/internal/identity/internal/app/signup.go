@@ -10,9 +10,9 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/akgbytes/ylx/internal/identity/adapters/crypto"
-	"github.com/akgbytes/ylx/internal/identity/adapters/otpstore"
-	"github.com/akgbytes/ylx/internal/identity/domain"
+	"github.com/akgbytes/ylx/internal/identity/internal/adapters/crypto"
+	"github.com/akgbytes/ylx/internal/identity/internal/adapters/otpstore"
+	"github.com/akgbytes/ylx/internal/identity/internal/domain"
 )
 
 type SignupInput struct {

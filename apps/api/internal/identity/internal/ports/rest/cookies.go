@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/akgbytes/ylx/internal/identity/app"
+	"github.com/akgbytes/ylx/internal/identity/internal/app"
 	"github.com/akgbytes/ylx/internal/platform/config"
 )
 

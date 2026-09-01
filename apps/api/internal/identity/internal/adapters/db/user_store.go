@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/akgbytes/ylx/internal/identity/domain"
+	"github.com/akgbytes/ylx/internal/identity/internal/domain"
 )
 
 type UserStore struct {

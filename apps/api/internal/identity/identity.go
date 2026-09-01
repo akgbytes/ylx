@@ -8,12 +8,12 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
-	"github.com/akgbytes/ylx/internal/identity/adapters/db"
-	"github.com/akgbytes/ylx/internal/identity/adapters/otpstore"
-	"github.com/akgbytes/ylx/internal/identity/adapters/task"
-	"github.com/akgbytes/ylx/internal/identity/adapters/token"
-	"github.com/akgbytes/ylx/internal/identity/app"
-	"github.com/akgbytes/ylx/internal/identity/ports/rest"
+	"github.com/akgbytes/ylx/internal/identity/internal/adapters/db"
+	"github.com/akgbytes/ylx/internal/identity/internal/adapters/otpstore"
+	"github.com/akgbytes/ylx/internal/identity/internal/adapters/task"
+	"github.com/akgbytes/ylx/internal/identity/internal/adapters/token"
+	"github.com/akgbytes/ylx/internal/identity/internal/app"
+	"github.com/akgbytes/ylx/internal/identity/internal/ports/rest"
 	"github.com/akgbytes/ylx/internal/platform/config"
 	"github.com/akgbytes/ylx/internal/platform/mailer"
 )

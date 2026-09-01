@@ -11,7 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
-	"github.com/akgbytes/ylx/internal/identity/adapters/otpstore"
+	"github.com/akgbytes/ylx/internal/identity/internal/adapters/otpstore"
 	"github.com/akgbytes/ylx/internal/platform/mailer"
 )
 

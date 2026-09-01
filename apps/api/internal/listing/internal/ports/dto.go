@@ -3,7 +3,7 @@ package rest
 import (
 	"time"
 
-	"github.com/akgbytes/ylx/internal/listing/domain"
+	"github.com/akgbytes/ylx/internal/listing/internal/domain"
 )
 
 type listingResponse struct {

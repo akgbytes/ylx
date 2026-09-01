@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/akgbytes/ylx/internal/listing/adapters/db"
-	"github.com/akgbytes/ylx/internal/listing/app"
-	rest "github.com/akgbytes/ylx/internal/listing/ports"
+	"github.com/akgbytes/ylx/internal/listing/internal/adapters/db"
+	"github.com/akgbytes/ylx/internal/listing/internal/app"
+	rest "github.com/akgbytes/ylx/internal/listing/internal/ports"
 )
 
 type Module struct {

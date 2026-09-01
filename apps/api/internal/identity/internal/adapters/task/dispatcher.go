@@ -6,7 +6,7 @@ import (
 
 	"github.com/hibiken/asynq"
 
-	"github.com/akgbytes/ylx/internal/identity/app"
+	"github.com/akgbytes/ylx/internal/identity/internal/app"
 )
 
 type Dispatcher struct {

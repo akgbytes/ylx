@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/akgbytes/ylx/internal/listing/domain"
+	"github.com/akgbytes/ylx/internal/listing/internal/domain"
 )
 
 type Store interface {

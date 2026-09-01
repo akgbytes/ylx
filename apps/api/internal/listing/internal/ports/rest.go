@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/akgbytes/ylx/internal/listing/app"
+	"github.com/akgbytes/ylx/internal/listing/internal/app"
 	"github.com/akgbytes/ylx/internal/platform/httpx"
 )
 

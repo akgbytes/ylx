@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/akgbytes/ylx/internal/listing/domain"
+	"github.com/akgbytes/ylx/internal/listing/internal/domain"
 )
 
 type Store struct {

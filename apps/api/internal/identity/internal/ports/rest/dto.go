@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/akgbytes/ylx/internal/identity/domain"
+	"github.com/akgbytes/ylx/internal/identity/internal/domain"
 )
 
 type signupRequest struct {

@@ -3,7 +3,7 @@ package rest
 import (
 	"net/http"
 
-	"github.com/akgbytes/ylx/internal/identity/app"
+	"github.com/akgbytes/ylx/internal/identity/internal/app"
 	"github.com/akgbytes/ylx/internal/platform/httpx"
 )
 
