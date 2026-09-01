@@ -48,6 +48,11 @@ func (c *Cookies) Clear(w http.ResponseWriter) {
 
 //nolint:gosec // Secure is enabled in prod and configurable for development.
 func (c *Cookies) write(w http.ResponseWriter, name, value string, expires time.Time, maxAge int) {
+	sameSite := http.SameSiteLaxMode
+	if c.secure {
+		sameSite = http.SameSiteNoneMode
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
@@ -56,7 +61,7 @@ func (c *Cookies) write(w http.ResponseWriter, name, value string, expires time.
 		MaxAge:   maxAge,
 		HttpOnly: true,
 		Secure:   c.secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: sameSite,
 	})
 }
 
