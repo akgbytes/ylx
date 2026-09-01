@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/akgbytes/ylx/internal/identity"
+	"github.com/akgbytes/ylx/internal/listing"
 	"github.com/akgbytes/ylx/internal/platform/config"
 	"github.com/akgbytes/ylx/internal/platform/health"
 	"github.com/akgbytes/ylx/internal/platform/middleware"
@@ -27,6 +28,9 @@ func newHandler(cfg *config.Config, logger zerolog.Logger, db *sql.DB, rdb *redi
 	})
 
 	identityModule.RegisterRoutes(mux)
+
+	listingModule := listing.New(listing.Deps{DB: db})
+	listingModule.RegisterRoutes(mux)
 
 	return middleware.Chain(
 		mux,
